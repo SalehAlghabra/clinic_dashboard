@@ -3,6 +3,8 @@ import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../models/dashboard_stats.dart';
 import '../models/reports_models.dart';
+import '../models/doctor_schedule_model.dart';
+import '../models/doctor_service_model.dart';
 
 class DashboardRepository {
   final ApiClient _apiClient;
@@ -84,18 +86,70 @@ class DashboardRepository {
     required String password,
     required String phone,
     required String specialization,
-    required double consultationFee,
+    String? bio,
   }) async {
-    await _apiClient.post(
-      ApiEndpoints.doctors,
+    final staffResponse = await _apiClient.post(
+      ApiEndpoints.createStaff,
       data: {
         'name': name,
         'email': email,
         'password': password,
         'phone': phone,
-        'specialization': specialization,
-        'consultation_fee': consultationFee,
+        'role': 'doctor',
       },
     );
+
+    final userId = staffResponse.data['user']['id'];
+
+    await _apiClient.post(
+      ApiEndpoints.doctors,
+      data: {
+        'user_id': userId,
+        'specialization': specialization,
+        'bio': bio ?? '',
+      },
+    );
+  }
+
+  Future<List<DoctorSchedule>> fetchDoctorSchedules(int doctorId) async {
+    final response = await _apiClient.get(ApiEndpoints.doctorSchedules(doctorId));
+    final List data = response.data is List ? response.data : [];
+    return data.map((e) => DoctorSchedule.fromJson(e)).toList();
+  }
+
+  Future<void> addDoctorSchedule(int doctorId, String day, String start, String end, int duration) async {
+    await _apiClient.post(
+      ApiEndpoints.doctorSchedules(doctorId),
+      data: {
+        'day_of_week': day.toLowerCase(),
+        'start_time': start,
+        'end_time': end,
+        'duration_per_patient': duration,
+      },
+    );
+  }
+
+  Future<void> deleteDoctorSchedule(int doctorId, int scheduleId) async {
+    await _apiClient.delete(ApiEndpoints.doctorScheduleDetail(doctorId, scheduleId));
+  }
+
+  Future<List<DoctorService>> fetchDoctorServices(int doctorId) async {
+    final response = await _apiClient.get(ApiEndpoints.doctorServices(doctorId));
+    final List data = response.data is List ? response.data : [];
+    return data.map((e) => DoctorService.fromJson(e)).toList();
+  }
+
+  Future<void> addDoctorService(int doctorId, String serviceName, double price) async {
+    await _apiClient.post(
+      ApiEndpoints.doctorServices(doctorId),
+      data: {
+        'service_name': serviceName,
+        'price': price,
+      },
+    );
+  }
+
+  Future<void> deleteDoctorService(int doctorId, int serviceId) async {
+    await _apiClient.delete(ApiEndpoints.doctorServiceDetail(doctorId, serviceId));
   }
 }

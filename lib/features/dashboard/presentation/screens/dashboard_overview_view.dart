@@ -18,8 +18,8 @@ class DashboardOverviewView extends StatelessWidget {
     return BlocBuilder<DashboardBloc, DashboardState>(
       builder: (context, state) {
         if (state is DashboardLoading || state is DashboardInitial) {
-          return const Center(
-            child: CircularProgressIndicator(color: AppColors.tealPrimary),
+          return Center(
+            child: CircularProgressIndicator(color: theme.primaryColor),
           );
         }
 
@@ -43,7 +43,7 @@ class DashboardOverviewView extends StatelessWidget {
                   icon: const Icon(Icons.refresh),
                   label: Text(context.tr('refresh')),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.tealPrimary,
+                    backgroundColor: theme.primaryColor,
                     foregroundColor: Colors.white,
                   ),
                 ),
@@ -91,7 +91,7 @@ class DashboardOverviewView extends StatelessWidget {
                       icon: const Icon(Icons.refresh, size: 18),
                       label: Text(context.tr('refresh')),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.tealPrimary,
+                        backgroundColor: theme.primaryColor,
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(10),

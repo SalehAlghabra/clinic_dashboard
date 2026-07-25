@@ -2,16 +2,17 @@ import 'package:flutter/material.dart';
 import 'app_colors.dart';
 
 class AppTheme {
-  static ThemeData get lightTheme {
+  static ThemeData lightTheme([Color? overridePrimary]) {
+    final primary = overridePrimary ?? AppColors.tealPrimary;
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
-      primaryColor: AppColors.tealPrimary,
+      primaryColor: primary,
       scaffoldBackgroundColor: AppColors.lightBg,
       cardColor: AppColors.lightSurface,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.tealPrimary,
-        secondary: AppColors.tealAction,
+      colorScheme: ColorScheme.light(
+        primary: primary,
+        secondary: primary,
         surface: AppColors.lightSurface,
         onPrimary: Colors.white,
         onSecondary: Colors.white,
@@ -44,16 +45,17 @@ class AppTheme {
     );
   }
 
-  static ThemeData get darkTheme {
+  static ThemeData darkTheme([Color? overridePrimary]) {
+    final primary = overridePrimary ?? AppColors.tealPrimary;
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      primaryColor: AppColors.tealPrimary,
+      primaryColor: primary,
       scaffoldBackgroundColor: AppColors.darkBg,
       cardColor: AppColors.darkSurface,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.tealPrimary,
-        secondary: AppColors.tealAction,
+      colorScheme: ColorScheme.dark(
+        primary: primary,
+        secondary: primary,
         surface: AppColors.darkSurface,
         onPrimary: Colors.white,
         onSecondary: Colors.white,

@@ -13,6 +13,7 @@ import 'features/dashboard/data/repositories/dashboard_repository.dart';
 import 'features/dashboard/presentation/bloc/dashboard_bloc.dart';
 import 'features/dashboard/presentation/bloc/language_cubit.dart';
 import 'features/dashboard/presentation/bloc/theme_cubit.dart';
+import 'features/dashboard/presentation/bloc/theme_state.dart';
 import 'features/dashboard/presentation/screens/admin_dashboard_screen.dart';
 
 void main() {
@@ -60,16 +61,16 @@ class MyApp extends StatelessWidget {
             create: (_) => DashboardBloc(repository: dashboardRepository),
           ),
         ],
-        child: BlocBuilder<ThemeCubit, bool>(
-          builder: (context, isDark) {
+        child: BlocBuilder<ThemeCubit, ThemeState>(
+          builder: (context, themeState) {
             return BlocBuilder<LanguageCubit, Locale>(
               builder: (context, locale) {
                 return MaterialApp(
                   title: 'Clinic Management Dashboard',
                   debugShowCheckedModeBanner: false,
-                  theme: AppTheme.lightTheme,
-                  darkTheme: AppTheme.darkTheme,
-                  themeMode: isDark ? ThemeMode.dark : ThemeMode.light,
+                  theme: AppTheme.lightTheme(themeState.primaryColor),
+                  darkTheme: AppTheme.darkTheme(themeState.primaryColor),
+                  themeMode: themeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
                   locale: locale,
                   supportedLocales: const [
                     Locale('en'),
@@ -85,14 +86,8 @@ class MyApp extends StatelessWidget {
                       if (authState is Authenticated) {
                         return const AdminDashboardScreen();
                       }
-                      if (authState is Unauthenticated || authState is AuthFailure) {
-                        return const LoginScreen();
-                      }
-                      return const Scaffold(
-                        body: Center(
-                          child: CircularProgressIndicator(),
-                        ),
-                      );
+                      // For Unauthenticated, AuthOtpRequired, AuthLoading, or AuthFailure:
+                      return const LoginScreen();
                     },
                   ),
                 );

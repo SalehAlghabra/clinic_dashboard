@@ -1,6 +1,8 @@
 class ApiEndpoints {
   // Auth
   static const String login = '/api/auth/login';
+  static const String verifyOtp = '/api/auth/verify-otp';
+  static const String resendOtp = '/api/auth/resend-otp';
   static const String logout = '/api/auth/logout';
   static const String me = '/api/auth/me';
   static const String createStaff = '/api/auth/create-staff';
@@ -16,7 +18,9 @@ class ApiEndpoints {
   static const String doctors = '/api/doctors';
   static String doctorDetail(int id) => '/api/doctors/$id';
   static String doctorSchedules(int doctorId) => '/api/doctors/$doctorId/schedules';
+  static String doctorScheduleDetail(int doctorId, int scheduleId) => '/api/doctors/$doctorId/schedules/$scheduleId';
   static String doctorServices(int doctorId) => '/api/doctors/$doctorId/services';
+  static String doctorServiceDetail(int doctorId, int serviceId) => '/api/doctors/$doctorId/services/$serviceId';
 
   static const String appointments = '/api/appointments';
   static const String invoices = '/api/invoices';

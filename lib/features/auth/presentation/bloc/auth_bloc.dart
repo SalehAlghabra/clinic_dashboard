@@ -10,6 +10,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         super(AuthInitial()) {
     on<CheckAuthStatus>(_onCheckAuthStatus);
     on<LoginSubmitted>(_onLoginSubmitted);
+    on<OtpSubmitted>(_onOtpSubmitted);
     on<LogoutRequested>(_onLogoutRequested);
   }
 
@@ -20,7 +21,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(AuthLoading());
     try {
       final user = await _authRepository.getProfile();
-      if (user != null) {
+      if (user != null && user.role != 'patient') {
         emit(Authenticated(user));
       } else {
         emit(Unauthenticated());
@@ -36,11 +37,46 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      final user = await _authRepository.login(
+      final result = await _authRepository.login(
         email: event.email,
         password: event.password,
       );
-      emit(Authenticated(user));
+
+      if (result.requiresOtp) {
+        emit(AuthOtpRequired(
+          email: result.email ?? event.email,
+          message: result.message ?? 'OTP verification required.',
+        ));
+      } else if (result.user != null) {
+        if (result.user!.role == 'patient') {
+          emit(const AuthFailure('Access denied. Patients cannot access the management dashboard.'));
+        } else {
+          emit(Authenticated(result.user!));
+        }
+      } else {
+        emit(const AuthFailure('Login failed. Please try again.'));
+      }
+    } catch (e) {
+      emit(AuthFailure(e.toString().replaceAll('ApiException: ', '')));
+    }
+  }
+
+  Future<void> _onOtpSubmitted(
+    OtpSubmitted event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(AuthLoading());
+    try {
+      final user = await _authRepository.verifyOtp(
+        email: event.email,
+        otp: event.otp,
+      );
+      if (user.role == 'patient') {
+        await _authRepository.logout();
+        emit(const AuthFailure('Access denied. Patients cannot access the management dashboard.'));
+      } else {
+        emit(Authenticated(user));
+      }
     } catch (e) {
       emit(AuthFailure(e.toString().replaceAll('ApiException: ', '')));
     }

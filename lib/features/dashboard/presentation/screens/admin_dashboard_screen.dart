@@ -9,6 +9,12 @@ import '../bloc/language_cubit.dart';
 import '../bloc/dashboard_bloc.dart';
 import '../bloc/dashboard_events_states.dart';
 import 'dashboard_overview_view.dart';
+import 'doctors_management_view.dart';
+import 'appointments_management_view.dart';
+import 'invoices_management_view.dart';
+import 'violations_management_view.dart';
+
+import '../widgets/theme_color_picker_dialog.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -29,63 +35,86 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 800;
-    final isDark = context.watch<ThemeCubit>().state;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final isWide = MediaQuery.of(context).size.width >= 900;
+    final primaryColor = theme.primaryColor;
 
-    final navItems = [
+    final List<_NavItem> navItems = [
       _NavItem(
+        label: context.tr('overview'),
         icon: Icons.dashboard_outlined,
         selectedIcon: Icons.dashboard,
-        label: context.tr('overview'),
         page: const DashboardOverviewView(),
       ),
       _NavItem(
-        icon: Icons.medical_information_outlined,
-        selectedIcon: Icons.medical_information,
         label: context.tr('doctors'),
-        page: const DashboardOverviewView(),
+        icon: Icons.medical_services_outlined,
+        selectedIcon: Icons.medical_services,
+        page: const DoctorsManagementView(),
       ),
       _NavItem(
-        icon: Icons.calendar_month_outlined,
-        selectedIcon: Icons.calendar_month,
         label: context.tr('appointments'),
-        page: const DashboardOverviewView(),
+        icon: Icons.calendar_today_outlined,
+        selectedIcon: Icons.calendar_today,
+        page: const AppointmentsManagementView(),
       ),
       _NavItem(
+        label: context.tr('invoices'),
         icon: Icons.receipt_long_outlined,
         selectedIcon: Icons.receipt_long,
-        label: context.tr('invoices'),
-        page: const DashboardOverviewView(),
+        page: const InvoicesManagementView(),
       ),
       _NavItem(
+        label: context.tr('violations'),
         icon: Icons.gavel_outlined,
         selectedIcon: Icons.gavel,
-        label: context.tr('violations'),
-        page: const DashboardOverviewView(),
+        page: const ViolationsManagementView(),
       ),
     ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          navItems[_selectedIndex].label,
-          style: TextStyle(
-            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-            fontWeight: FontWeight.bold,
-          ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: primaryColor.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.local_hospital, color: primaryColor),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              context.tr('app_title'),
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.palette_outlined, color: primaryColor),
+            tooltip: context.tr('theme_color'),
+            onPressed: () {
+              ThemeColorPickerDialog.show(context);
+            },
+          ),
+          const SizedBox(width: 4),
+
           TextButton.icon(
             onPressed: () {
               context.read<LanguageCubit>().toggleLanguage();
             },
-            icon: const Icon(Icons.language, size: 18),
+            icon: Icon(Icons.language, size: 18, color: primaryColor),
             label: Text(
               context.tr('switch_language'),
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
 
           IconButton(
             icon: Icon(
@@ -96,7 +125,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               context.read<ThemeCubit>().toggleTheme();
             },
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 4),
 
           IconButton(
             icon: const Icon(Icons.logout, color: AppColors.danger),
@@ -111,51 +140,70 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       body: Row(
         children: [
           if (isWide)
-            NavigationRail(
-              backgroundColor: isDark ? AppColors.darkSurface : AppColors.tealCanvas,
-              elevation: 4,
-              extended: _isExtended,
-              useIndicator: true,
-              indicatorColor: AppColors.tealPrimary.withValues(alpha: 0.2),
-              indicatorShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-              selectedIconTheme: const IconThemeData(color: AppColors.tealPrimary),
-              unselectedIconTheme: IconThemeData(
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-              ),
-              selectedLabelTextStyle: const TextStyle(
-                color: AppColors.tealPrimary,
-                fontWeight: FontWeight.bold,
-              ),
-              unselectedLabelTextStyle: TextStyle(
-                color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-              ),
-              trailing: Padding(
-                padding: const EdgeInsets.only(bottom: 16.0),
-                child: IconButton(
-                  icon: Icon(
-                    context.isArabic
-                        ? (_isExtended ? Icons.keyboard_double_arrow_right : Icons.keyboard_double_arrow_left)
-                        : (_isExtended ? Icons.keyboard_double_arrow_left : Icons.keyboard_double_arrow_right),
+            Container(
+              decoration: BoxDecoration(
+                color: isDark ? AppColors.darkSurface : Colors.white,
+                border: Border(
+                  right: BorderSide(
+                    color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+                    width: 1,
                   ),
-                  onPressed: () {
-                    setState(() => _isExtended = !_isExtended);
-                  },
-                  tooltip: 'Toggle sidebar',
                 ),
               ),
-              selectedIndex: _selectedIndex,
-              onDestinationSelected: (index) {
-                setState(() => _selectedIndex = index);
-              },
-              destinations: navItems.map((item) {
-                return NavigationRailDestination(
-                  icon: Icon(item.icon),
-                  selectedIcon: Icon(item.selectedIcon),
-                  label: Text(item.label),
-                );
-              }).toList(),
+              child: NavigationRail(
+                backgroundColor: Colors.transparent,
+                extended: _isExtended,
+                useIndicator: true,
+                indicatorColor: isDark ? primaryColor.withValues(alpha: 0.2) : primaryColor.withValues(alpha: 0.15),
+                indicatorShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  side: BorderSide(
+                    color: primaryColor.withValues(alpha: isDark ? 0.3 : 0.6),
+                    width: isDark ? 1.0 : 1.5,
+                  ),
+                ),
+                selectedIconTheme: IconThemeData(color: primaryColor, size: 24),
+                unselectedIconTheme: IconThemeData(
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+                  size: 22,
+                ),
+                selectedLabelTextStyle: TextStyle(
+                  color: primaryColor,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 14,
+                ),
+                unselectedLabelTextStyle: TextStyle(
+                  color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF334155),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+                trailing: Padding(
+                  padding: const EdgeInsets.only(bottom: 16.0),
+                  child: IconButton(
+                    icon: Icon(
+                      context.isArabic
+                          ? (_isExtended ? Icons.keyboard_double_arrow_right : Icons.keyboard_double_arrow_left)
+                          : (_isExtended ? Icons.keyboard_double_arrow_left : Icons.keyboard_double_arrow_right),
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    ),
+                    onPressed: () {
+                      setState(() => _isExtended = !_isExtended);
+                    },
+                    tooltip: 'Toggle sidebar',
+                  ),
+                ),
+                selectedIndex: _selectedIndex,
+                onDestinationSelected: (index) {
+                  setState(() => _selectedIndex = index);
+                },
+                destinations: navItems.map((item) {
+                  return NavigationRailDestination(
+                    icon: Icon(item.icon),
+                    selectedIcon: Icon(item.selectedIcon),
+                    label: Text(item.label),
+                  );
+                }).toList(),
+              ),
             ),
           Expanded(
             child: Container(

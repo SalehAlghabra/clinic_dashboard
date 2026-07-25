@@ -19,6 +19,16 @@ class LoginSubmitted extends AuthEvent {
   List<Object?> get props => [email, password];
 }
 
+class OtpSubmitted extends AuthEvent {
+  final String email;
+  final String otp;
+
+  const OtpSubmitted({required this.email, required this.otp});
+
+  @override
+  List<Object?> get props => [email, otp];
+}
+
 class LogoutRequested extends AuthEvent {}
 
 // States
@@ -31,6 +41,16 @@ abstract class AuthState extends Equatable {
 class AuthInitial extends AuthState {}
 
 class AuthLoading extends AuthState {}
+
+class AuthOtpRequired extends AuthState {
+  final String email;
+  final String message;
+
+  const AuthOtpRequired({required this.email, required this.message});
+
+  @override
+  List<Object?> get props => [email, message];
+}
 
 class Authenticated extends AuthState {
   final UserModel user;

@@ -1,3 +1,17 @@
+double _toDouble(dynamic value) {
+  if (value == null) return 0.0;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0.0;
+  return 0.0;
+}
+
+int _toInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
 class AppointmentReportItem {
   final int id;
   final String patientName;
@@ -21,7 +35,7 @@ class AppointmentReportItem {
 
   factory AppointmentReportItem.fromJson(Map<String, dynamic> json) {
     return AppointmentReportItem(
-      id: json['id'] ?? 0,
+      id: _toInt(json['id']),
       patientName: json['patient_name'] ?? 'Unknown Patient',
       doctorName: json['doctor_name'] ?? 'Unknown Doctor',
       service: json['service'] ?? 'General Service',
@@ -34,6 +48,7 @@ class AppointmentReportItem {
 }
 
 class DoctorReportItem {
+  final int id;
   final String doctorName;
   final String specialization;
   final int totalAppointments;
@@ -42,6 +57,7 @@ class DoctorReportItem {
   final double revenue;
 
   DoctorReportItem({
+    required this.id,
     required this.doctorName,
     required this.specialization,
     required this.totalAppointments,
@@ -52,17 +68,19 @@ class DoctorReportItem {
 
   factory DoctorReportItem.fromJson(Map<String, dynamic> json) {
     return DoctorReportItem(
+      id: _toInt(json['id']),
       doctorName: json['doctor_name'] ?? '',
       specialization: json['specialization'] ?? '',
-      totalAppointments: json['total_appointments'] ?? 0,
-      completed: json['completed'] ?? 0,
-      cancelled: json['cancelled'] ?? 0,
-      revenue: (json['revenue'] ?? 0).toDouble(),
+      totalAppointments: _toInt(json['total_appointments']),
+      completed: _toInt(json['completed']),
+      cancelled: _toInt(json['cancelled']),
+      revenue: _toDouble(json['revenue']),
     );
   }
 }
 
 class ViolationReportItem {
+  final int id;
   final String patientName;
   final String email;
   final int violationCount;
@@ -70,6 +88,7 @@ class ViolationReportItem {
   final String penaltyRate;
 
   ViolationReportItem({
+    required this.id,
     required this.patientName,
     required this.email,
     required this.violationCount,
@@ -79,10 +98,11 @@ class ViolationReportItem {
 
   factory ViolationReportItem.fromJson(Map<String, dynamic> json) {
     return ViolationReportItem(
+      id: _toInt(json['id']),
       patientName: json['patient_name'] ?? '',
       email: json['email'] ?? '',
-      violationCount: json['violation_count'] ?? 0,
-      totalPenalties: (json['total_penalties'] ?? 0).toDouble(),
+      violationCount: _toInt(json['violation_count']),
+      totalPenalties: _toDouble(json['total_penalties']),
       penaltyRate: json['penalty_rate'] ?? '0%',
     );
   }
@@ -111,11 +131,11 @@ class InvoiceReportItem {
 
   factory InvoiceReportItem.fromJson(Map<String, dynamic> json) {
     return InvoiceReportItem(
-      id: json['id'] ?? 0,
+      id: _toInt(json['id']),
       patientName: json['patient_name'] ?? 'N/A',
       doctorName: json['doctor_name'] ?? 'N/A',
       service: json['service'] ?? 'N/A',
-      totalAmount: (json['total_amount'] ?? 0).toDouble(),
+      totalAmount: _toDouble(json['total_amount']),
       paymentStatus: json['payment_status'] ?? 'unpaid',
       paymentMethod: json['payment_method'] ?? 'cash',
       issuedAt: json['issued_at'] ?? '',

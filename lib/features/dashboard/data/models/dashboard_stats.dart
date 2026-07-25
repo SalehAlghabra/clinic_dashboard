@@ -1,3 +1,17 @@
+double _toDouble(dynamic value) {
+  if (value == null) return 0.0;
+  if (value is num) return value.toDouble();
+  if (value is String) return double.tryParse(value) ?? 0.0;
+  return 0.0;
+}
+
+int _toInt(dynamic value) {
+  if (value == null) return 0;
+  if (value is num) return value.toInt();
+  if (value is String) return int.tryParse(value) ?? 0;
+  return 0;
+}
+
 class UserStats {
   final int totalPatients;
   final int totalDoctors;
@@ -13,10 +27,10 @@ class UserStats {
 
   factory UserStats.fromJson(Map<String, dynamic> json) {
     return UserStats(
-      totalPatients: json['total_patients'] ?? 0,
-      totalDoctors: json['total_doctors'] ?? 0,
-      totalReceptionists: json['total_receptionists'] ?? 0,
-      newPatientsToday: json['new_patients_today'] ?? 0,
+      totalPatients: _toInt(json['total_patients']),
+      totalDoctors: _toInt(json['total_doctors']),
+      totalReceptionists: _toInt(json['total_receptionists']),
+      newPatientsToday: _toInt(json['new_patients_today']),
     );
   }
 }
@@ -44,14 +58,14 @@ class AppointmentStats {
 
   factory AppointmentStats.fromJson(Map<String, dynamic> json) {
     return AppointmentStats(
-      total: json['total'] ?? 0,
-      today: json['today'] ?? 0,
-      pending: json['pending'] ?? 0,
-      confirmed: json['confirmed'] ?? 0,
-      completed: json['completed'] ?? 0,
-      cancelled: json['cancelled'] ?? 0,
-      cancelledByDoctor: json['cancelled_by_doctor'] ?? 0,
-      cancelledByPatient: json['cancelled_by_patient'] ?? 0,
+      total: _toInt(json['total']),
+      today: _toInt(json['today']),
+      pending: _toInt(json['pending']),
+      confirmed: _toInt(json['confirmed']),
+      completed: _toInt(json['completed']),
+      cancelled: _toInt(json['cancelled']),
+      cancelledByDoctor: _toInt(json['cancelled_by_doctor']),
+      cancelledByPatient: _toInt(json['cancelled_by_patient']),
     );
   }
 }
@@ -75,12 +89,12 @@ class FinancialStats {
 
   factory FinancialStats.fromJson(Map<String, dynamic> json) {
     return FinancialStats(
-      totalInvoices: json['total_invoices'] ?? 0,
-      totalRevenue: (json['total_revenue'] ?? 0).toDouble(),
-      pendingPayments: (json['pending_payments'] ?? 0).toDouble(),
-      totalDeposits: (json['total_deposits'] ?? 0).toDouble(),
-      totalPenalties: (json['total_penalties'] ?? 0).toDouble(),
-      totalRefunds: (json['total_refunds'] ?? 0).toDouble(),
+      totalInvoices: _toInt(json['total_invoices']),
+      totalRevenue: _toDouble(json['total_revenue']),
+      pendingPayments: _toDouble(json['pending_payments']),
+      totalDeposits: _toDouble(json['total_deposits']),
+      totalPenalties: _toDouble(json['total_penalties']),
+      totalRefunds: _toDouble(json['total_refunds']),
     );
   }
 }

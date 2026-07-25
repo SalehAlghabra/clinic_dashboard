@@ -7,6 +7,7 @@ class StorageService {
   static const String _tokenKey = 'auth_token';
   static const String _themeKey = 'is_dark_mode';
   static const String _localeKey = 'app_locale';
+  static const String _primaryColorKey = 'primary_color_hex';
 
   Future<void> saveToken(String token) async {
     await _secureStorage.write(key: _tokenKey, value: token);
@@ -46,6 +47,14 @@ class StorageService {
 
   Future<bool> isDarkMode() async {
     return await readBool(_themeKey, defaultValue: false);
+  }
+
+  Future<void> savePrimaryColor(String hexString) async {
+    await saveString(_primaryColorKey, hexString);
+  }
+
+  Future<String?> getPrimaryColor() async {
+    return await readString(_primaryColorKey);
   }
 
   Future<void> setLocale(String localeCode) async {
