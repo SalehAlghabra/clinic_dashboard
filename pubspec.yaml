@@ -23,6 +23,7 @@ dependencies:
   flutter_animate: ^4.5.2
   equatable: ^2.0.7
   sidebarx: ^0.17.2
+  file_picker: ^8.1.7
 
 dev_dependencies:
   flutter_test:

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart' as dio;
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
 import '../../../../core/services/storage_service.dart';
@@ -76,6 +77,37 @@ class AuthRepository {
     return UserModel.fromJson(userData);
   }
 
+  Future<void> forgotPassword(String email) async {
+    await _apiClient.post(
+      ApiEndpoints.forgotPassword,
+      data: {'email': email},
+    );
+  }
+
+  Future<void> verifyResetOtp(String email, String otp) async {
+    await _apiClient.post(
+      ApiEndpoints.verifyResetOtp,
+      data: {'email': email, 'otp': otp},
+    );
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String password,
+    required String passwordConfirmation,
+  }) async {
+    await _apiClient.post(
+      ApiEndpoints.resetPassword,
+      data: {
+        'email': email,
+        'otp': otp,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+      },
+    );
+  }
+
   Future<UserModel?> getProfile() async {
     try {
       final token = await _storageService.getToken();
@@ -86,6 +118,41 @@ class AuthRepository {
     } catch (_) {
       return null;
     }
+  }
+
+  Future<UserModel> updateProfile({
+    String? name,
+    String? phone,
+    String? password,
+    String? currentPassword,
+    String? profilePicture,
+    List<int>? fileBytes,
+    String? fileName,
+  }) async {
+    final map = <String, dynamic>{};
+    if (name != null && name.isNotEmpty) map['name'] = name;
+    if (phone != null) map['phone'] = phone;
+    if (password != null && password.isNotEmpty) {
+      map['password'] = password;
+      map['password_confirmation'] = password;
+      if (currentPassword != null) map['current_password'] = currentPassword;
+    }
+    if (fileBytes != null && fileName != null) {
+      map['profile_picture'] = dio.MultipartFile.fromBytes(fileBytes, filename: fileName);
+    } else if (profilePicture != null && profilePicture.isNotEmpty) {
+      map['profile_picture'] = profilePicture;
+    }
+
+    final formData = dio.FormData.fromMap(map);
+
+    final response = await _apiClient.post(
+      ApiEndpoints.updateProfile,
+      data: formData,
+    );
+
+    final data = response.data;
+    final userData = data['user'] ?? data;
+    return UserModel.fromJson(userData);
   }
 
   Future<void> logout() async {

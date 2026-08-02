@@ -268,7 +268,7 @@ class DashboardOverviewView extends StatelessWidget {
                             columns: [
                               DataColumn(label: Text(context.tr('patient_name'))),
                               DataColumn(label: Text(context.tr('doctor_name'))),
-                              DataColumn(label: Text(context.tr('service'))),
+                              DataColumn(label: Text(context.tr('consultation_fee'))),
                               DataColumn(label: Text(context.tr('date_time'))),
                               DataColumn(label: Text(context.tr('status'))),
                             ],
@@ -281,7 +281,7 @@ class DashboardOverviewView extends StatelessWidget {
                               return DataRow(cells: [
                                 DataCell(Text(appt.patientName)),
                                 DataCell(Text(appt.doctorName)),
-                                DataCell(Text(appt.service)),
+                                DataCell(Text('\$${appt.consultationFee.toStringAsFixed(2)}')),
                                 DataCell(Text('${appt.appointmentDate} ${appt.appointmentTime}')),
                                 DataCell(
                                   Container(

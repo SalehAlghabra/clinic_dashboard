@@ -5,6 +5,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../bloc/dashboard_bloc.dart';
 import '../bloc/dashboard_events_states.dart';
 import '../../data/repositories/dashboard_repository.dart';
+import '../../data/models/reports_models.dart';
 import '../widgets/doctor_details_modal.dart';
 
 class DoctorsManagementView extends StatelessWidget {
@@ -16,6 +17,7 @@ class DoctorsManagementView extends StatelessWidget {
     final passwordController = TextEditingController(text: 'password123');
     final phoneController = TextEditingController();
     final specController = TextEditingController(text: 'General Practice');
+    final feeController = TextEditingController(text: '150.00');
     final bioController = TextEditingController();
 
     showDialog(
@@ -49,6 +51,11 @@ class DoctorsManagementView extends StatelessWidget {
                   decoration: InputDecoration(labelText: context.tr('specialization')),
                 ),
                 TextField(
+                  controller: feeController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: InputDecoration(labelText: context.tr('consultation_fee')),
+                ),
+                TextField(
                   controller: bioController,
                   decoration: InputDecoration(labelText: context.tr('bio')),
                 ),
@@ -68,12 +75,14 @@ class DoctorsManagementView extends StatelessWidget {
               onPressed: () async {
                 try {
                   final repo = context.read<DashboardRepository>();
+                  final fee = double.tryParse(feeController.text.trim()) ?? 0.0;
                   await repo.createDoctor(
                     name: nameController.text.trim(),
                     email: emailController.text.trim(),
                     password: passwordController.text.trim(),
                     phone: phoneController.text.trim(),
                     specialization: specController.text.trim(),
+                    consultationFee: fee,
                     bio: bioController.text.trim(),
                   );
                   if (dialogContext.mounted) {
@@ -98,6 +107,53 @@ class DoctorsManagementView extends StatelessWidget {
                 }
               },
               child: const Text('Create Doctor'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteDoctor(BuildContext context, DoctorReportItem doc) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          title: Text(context.tr('delete_doctor')),
+          content: Text('${context.tr('delete_doctor_confirm')}\n(${doc.doctorName})'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(context.tr('cancel')),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                try {
+                  final repo = context.read<DashboardRepository>();
+                  await repo.deleteDoctor(doc.id);
+                  if (dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(context.tr('doctor_deleted_success')),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                    context.read<DashboardBloc>().add(RefreshDashboard());
+                  }
+                } catch (e) {
+                  if (dialogCtx.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.danger),
+                    );
+                  }
+                }
+              },
+              child: Text(context.tr('delete')),
             ),
           ],
         );
@@ -146,17 +202,31 @@ class DoctorsManagementView extends StatelessWidget {
                         ),
                       ],
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () => _showAddDoctorDialog(context),
-                      icon: const Icon(Icons.add),
-                      label: Text(context.tr('add_doctor')),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.primaryColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => context.read<DashboardBloc>().add(RefreshDashboard()),
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: Text(context.tr('refresh')),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.primaryColor,
+                            side: BorderSide(color: theme.primaryColor),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () => _showAddDoctorDialog(context),
+                          icon: const Icon(Icons.add),
+                          label: Text(context.tr('add_doctor')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.primaryColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -191,6 +261,7 @@ class DoctorsManagementView extends StatelessWidget {
                             columns: [
                               DataColumn(label: Text(context.tr('doctor_name'))),
                               DataColumn(label: Text(context.tr('specialization'))),
+                              DataColumn(label: Text(context.tr('consultation_fee'))),
                               DataColumn(label: Text(context.tr('total_appointments'))),
                               DataColumn(label: Text(context.tr('completed_appointments'))),
                               DataColumn(label: Text(context.tr('cancelled_appointments'))),
@@ -215,19 +286,31 @@ class DoctorsManagementView extends StatelessWidget {
                                   ),
                                 ),
                                 DataCell(Text(doc.specialization)),
+                                DataCell(Text('\$${doc.consultationFee.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))),
                                 DataCell(Text('${doc.totalAppointments}')),
                                 DataCell(Text('${doc.completed}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.bold))),
                                 DataCell(Text('${doc.cancelled}', style: const TextStyle(color: AppColors.danger))),
                                 DataCell(Text('\$${doc.revenue.toStringAsFixed(2)}', style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold))),
                                 DataCell(
-                                  OutlinedButton.icon(
-                                    onPressed: () => DoctorDetailsModal.show(context, doc),
-                                    icon: const Icon(Icons.edit_calendar, size: 16),
-                                    label: Text(context.tr('schedule_and_services')),
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: theme.primaryColor,
-                                      side: BorderSide(color: theme.primaryColor),
-                                    ),
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      OutlinedButton.icon(
+                                        onPressed: () => DoctorDetailsModal.show(context, doc),
+                                        icon: const Icon(Icons.edit_calendar, size: 16),
+                                        label: Text(context.tr('schedule_and_details')),
+                                        style: OutlinedButton.styleFrom(
+                                          foregroundColor: theme.primaryColor,
+                                          side: BorderSide(color: theme.primaryColor),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                                        tooltip: 'Delete Doctor',
+                                        onPressed: () => _confirmDeleteDoctor(context, doc),
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ]);

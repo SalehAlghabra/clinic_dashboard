@@ -1,7 +1,11 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../../../core/l10n/app_translations.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../auth/data/models/user_model.dart';
+import '../../../auth/data/repositories/auth_repository.dart';
 import '../../../auth/presentation/bloc/auth_bloc.dart';
 import '../../../auth/presentation/bloc/auth_events_states.dart';
 import '../bloc/theme_cubit.dart';
@@ -10,6 +14,7 @@ import '../bloc/dashboard_bloc.dart';
 import '../bloc/dashboard_events_states.dart';
 import 'dashboard_overview_view.dart';
 import 'doctors_management_view.dart';
+import 'patients_management_view.dart';
 import 'appointments_management_view.dart';
 import 'invoices_management_view.dart';
 import 'violations_management_view.dart';
@@ -33,6 +38,177 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     context.read<DashboardBloc>().add(const FetchDashboardData());
   }
 
+  void _showProfileDialog(BuildContext context) {
+    final authBlocState = context.read<AuthBloc>().state;
+    UserModel? currentUser;
+    if (authBlocState is Authenticated) {
+      currentUser = authBlocState.user;
+    }
+
+    final nameController = TextEditingController(text: currentUser?.name ?? '');
+    final phoneController = TextEditingController(text: currentUser?.phone ?? '');
+    final currentPasswordController = TextEditingController();
+    final passwordController = TextEditingController();
+
+    Uint8List? selectedBytes;
+    String? selectedFileName;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final primaryColor = Theme.of(context).primaryColor;
+
+            return AlertDialog(
+              title: Text(context.tr('edit_profile')),
+              content: SizedBox(
+                width: 440,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      CircleAvatar(
+                        radius: 40,
+                        backgroundColor: primaryColor.withValues(alpha: 0.15),
+                        backgroundImage: selectedBytes != null
+                            ? MemoryImage(selectedBytes!)
+                            : (currentUser?.profilePictureUrl != null
+                                ? NetworkImage(currentUser!.profilePictureUrl!) as ImageProvider
+                                : null),
+                        child: (selectedBytes == null && currentUser?.profilePictureUrl == null)
+                            ? Icon(Icons.person, size: 40, color: primaryColor)
+                            : null,
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: () async {
+                          final result = await FilePicker.platform.pickFiles(
+                            type: FileType.image,
+                            withData: true,
+                          );
+                          if (result != null && result.files.isNotEmpty) {
+                            final file = result.files.first;
+                            if (file.bytes != null) {
+                              setDialogState(() {
+                                selectedBytes = file.bytes;
+                                selectedFileName = file.name;
+                              });
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.photo_library_outlined, size: 18),
+                        label: Text(
+                          selectedFileName != null ? selectedFileName! : 'Choose Photo from Device',
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryColor,
+                          side: BorderSide(color: primaryColor),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(
+                          labelText: context.tr('patient_name'),
+                          prefixIcon: const Icon(Icons.person_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phoneController,
+                        decoration: InputDecoration(
+                          labelText: context.tr('phone'),
+                          prefixIcon: const Icon(Icons.phone_outlined),
+                        ),
+                      ),
+                      const Divider(height: 32),
+                      Text(context.tr('new_password'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: currentPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('current_password'),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('new_password'),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text(context.tr('cancel')),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final authRepo = RepositoryProvider.of<AuthRepository>(context);
+                            await authRepo.updateProfile(
+                              name: nameController.text.trim(),
+                              phone: phoneController.text.trim(),
+                              currentPassword: currentPasswordController.text.trim().isNotEmpty
+                                  ? currentPasswordController.text.trim()
+                                  : null,
+                              password: passwordController.text.trim().isNotEmpty
+                                  ? passwordController.text.trim()
+                                  : null,
+                              fileBytes: selectedBytes,
+                              fileName: selectedFileName,
+                            );
+
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Profile updated successfully!'),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                              // Refresh Auth state
+                              context.read<AuthBloc>().add(CheckAuthStatus());
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            if (dialogCtx.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed: ${e.toString()}'), backgroundColor: AppColors.danger),
+                              );
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(context.tr('save_changes')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -40,38 +216,58 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final isWide = MediaQuery.of(context).size.width >= 900;
     final primaryColor = theme.primaryColor;
 
-    final List<_NavItem> navItems = [
+    // Check role from AuthBloc
+    final authState = context.watch<AuthBloc>().state;
+    final userRole = authState is Authenticated ? authState.user.role : 'admin';
+
+    final List<_NavItem> allNavItems = [
       _NavItem(
         label: context.tr('overview'),
         icon: Icons.dashboard_outlined,
         selectedIcon: Icons.dashboard,
         page: const DashboardOverviewView(),
+        roles: ['admin', 'receptionist'],
       ),
       _NavItem(
         label: context.tr('doctors'),
         icon: Icons.medical_services_outlined,
         selectedIcon: Icons.medical_services,
         page: const DoctorsManagementView(),
+        roles: ['admin'], // Hidden for Receptionists
+      ),
+      _NavItem(
+        label: context.tr('patients'),
+        icon: Icons.people_outline,
+        selectedIcon: Icons.people,
+        page: const PatientsManagementView(),
+        roles: ['admin', 'receptionist'],
       ),
       _NavItem(
         label: context.tr('appointments'),
         icon: Icons.calendar_today_outlined,
         selectedIcon: Icons.calendar_today,
         page: const AppointmentsManagementView(),
+        roles: ['admin', 'receptionist'],
       ),
       _NavItem(
         label: context.tr('invoices'),
         icon: Icons.receipt_long_outlined,
         selectedIcon: Icons.receipt_long,
         page: const InvoicesManagementView(),
+        roles: ['admin', 'receptionist'],
       ),
       _NavItem(
         label: context.tr('violations'),
         icon: Icons.gavel_outlined,
         selectedIcon: Icons.gavel,
         page: const ViolationsManagementView(),
+        roles: ['admin', 'receptionist'],
       ),
     ];
+
+    // Filter nav items by role
+    final navItems = allNavItems.where((item) => item.roles.contains(userRole)).toList();
+    final activeIndex = _selectedIndex.clamp(0, navItems.length - 1);
 
     return Scaffold(
       appBar: AppBar(
@@ -92,9 +288,30 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 fontWeight: FontWeight.bold,
               ),
             ),
+            if (userRole == 'receptionist') ...[
+              const SizedBox(width: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.info.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'RECEPTIONIST',
+                  style: TextStyle(color: AppColors.info, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
           ],
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.person_outline, color: primaryColor),
+            tooltip: context.tr('edit_profile'),
+            onPressed: () => _showProfileDialog(context),
+          ),
+          const SizedBox(width: 4),
+
           IconButton(
             icon: Icon(Icons.palette_outlined, color: primaryColor),
             tooltip: context.tr('theme_color'),
@@ -192,7 +409,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     tooltip: 'Toggle sidebar',
                   ),
                 ),
-                selectedIndex: _selectedIndex,
+                selectedIndex: activeIndex,
                 onDestinationSelected: (index) {
                   setState(() => _selectedIndex = index);
                 },
@@ -208,7 +425,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           Expanded(
             child: Container(
               color: isDark ? AppColors.darkBg : AppColors.lightBg,
-              child: navItems[_selectedIndex].page,
+              child: navItems[activeIndex].page,
             ),
           ),
         ],
@@ -216,7 +433,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       bottomNavigationBar: isWide
           ? null
           : NavigationBar(
-              selectedIndex: _selectedIndex,
+              selectedIndex: activeIndex,
               onDestinationSelected: (index) => setState(() => _selectedIndex = index),
               destinations: navItems.map((item) {
                 return NavigationDestination(
@@ -235,11 +452,13 @@ class _NavItem {
   final IconData selectedIcon;
   final String label;
   final Widget page;
+  final List<String> roles;
 
   _NavItem({
     required this.icon,
     required this.selectedIcon,
     required this.label,
     required this.page,
+    required this.roles,
   });
 }

@@ -4,7 +4,6 @@ import '../../../../core/api/api_endpoints.dart';
 import '../models/dashboard_stats.dart';
 import '../models/reports_models.dart';
 import '../models/doctor_schedule_model.dart';
-import '../models/doctor_service_model.dart';
 
 class DashboardRepository {
   final ApiClient _apiClient;
@@ -73,6 +72,14 @@ class DashboardRepository {
     return patients.map((e) => ViolationReportItem.fromJson(e)).toList();
   }
 
+  Future<List<PatientReportItem>> fetchPatientsReport({String? search}) async {
+    final params = <String, dynamic>{};
+    if (search != null && search.isNotEmpty) params['search'] = search;
+    final response = await _apiClient.get(ApiEndpoints.patientsReport, queryParameters: params);
+    final List patients = response.data['patients'] ?? [];
+    return patients.map((e) => PatientReportItem.fromJson(e)).toList();
+  }
+
   Future<void> depositWallet(int userId, double amount) async {
     await _apiClient.post(
       ApiEndpoints.walletDeposit(userId),
@@ -86,6 +93,7 @@ class DashboardRepository {
     required String password,
     required String phone,
     required String specialization,
+    required double consultationFee,
     String? bio,
   }) async {
     final staffResponse = await _apiClient.post(
@@ -106,9 +114,30 @@ class DashboardRepository {
       data: {
         'user_id': userId,
         'specialization': specialization,
+        'consultation_fee': consultationFee,
         'bio': bio ?? '',
       },
     );
+  }
+
+  Future<void> updateDoctor(int doctorId, {
+    String? specialization,
+    double? consultationFee,
+    String? bio,
+  }) async {
+    final data = <String, dynamic>{};
+    if (specialization != null) data['specialization'] = specialization;
+    if (consultationFee != null) data['consultation_fee'] = consultationFee;
+    if (bio != null) data['bio'] = bio;
+
+    await _apiClient.put(
+      ApiEndpoints.doctorDetail(doctorId),
+      data: data,
+    );
+  }
+
+  Future<void> deleteDoctor(int doctorId) async {
+    await _apiClient.delete(ApiEndpoints.doctorDetail(doctorId));
   }
 
   Future<List<DoctorSchedule>> fetchDoctorSchedules(int doctorId) async {
@@ -133,23 +162,29 @@ class DashboardRepository {
     await _apiClient.delete(ApiEndpoints.doctorScheduleDetail(doctorId, scheduleId));
   }
 
-  Future<List<DoctorService>> fetchDoctorServices(int doctorId) async {
-    final response = await _apiClient.get(ApiEndpoints.doctorServices(doctorId));
-    final List data = response.data is List ? response.data : [];
-    return data.map((e) => DoctorService.fromJson(e)).toList();
-  }
+  Future<void> updateAppointmentStatus(int appointmentId, String status, {
+    double? additionalCost,
+    String? additionalNote,
+  }) async {
+    final data = <String, dynamic>{'status': status};
+    if (status == 'completed') {
+      if (additionalCost != null) data['additional_cost'] = additionalCost;
+      if (additionalNote != null) data['additional_note'] = additionalNote;
+    }
 
-  Future<void> addDoctorService(int doctorId, String serviceName, double price) async {
-    await _apiClient.post(
-      ApiEndpoints.doctorServices(doctorId),
-      data: {
-        'service_name': serviceName,
-        'price': price,
-      },
+    await _apiClient.patch(
+      '${ApiEndpoints.appointments}/$appointmentId/status',
+      data: data,
     );
   }
 
-  Future<void> deleteDoctorService(int doctorId, int serviceId) async {
-    await _apiClient.delete(ApiEndpoints.doctorServiceDetail(doctorId, serviceId));
+  Future<void> updateInvoicePayment(int invoiceId, String status, String paymentMethod) async {
+    await _apiClient.patch(
+      '${ApiEndpoints.invoices}/$invoiceId/payment',
+      data: {
+        'payment_status': status,
+        'payment_method': paymentMethod,
+      },
+    );
   }
 }

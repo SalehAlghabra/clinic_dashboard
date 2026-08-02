@@ -152,17 +152,31 @@ class ViolationsManagementView extends StatelessWidget {
                         ),
                       ],
                     ),
-                    ElevatedButton.icon(
-                      onPressed: () => _showDepositDialog(context, patients: violations),
-                      icon: const Icon(Icons.account_balance_wallet_outlined),
-                      label: Text(context.tr('deposit_wallet')),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: theme.primaryColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    Row(
+                      children: [
+                        OutlinedButton.icon(
+                          onPressed: () => context.read<DashboardBloc>().add(RefreshDashboard()),
+                          icon: const Icon(Icons.refresh, size: 18),
+                          label: Text(context.tr('refresh')),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: theme.primaryColor,
+                            side: BorderSide(color: theme.primaryColor),
+                          ),
                         ),
-                      ),
+                        const SizedBox(width: 12),
+                        ElevatedButton.icon(
+                          onPressed: () => _showDepositDialog(context, patients: violations),
+                          icon: const Icon(Icons.account_balance_wallet_outlined),
+                          label: Text(context.tr('deposit_wallet')),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: theme.primaryColor,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

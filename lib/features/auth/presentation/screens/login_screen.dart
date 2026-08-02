@@ -4,6 +4,7 @@ import '../../../../core/l10n/app_translations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../dashboard/presentation/bloc/language_cubit.dart';
 import '../../../dashboard/presentation/bloc/theme_cubit.dart';
+import '../../data/repositories/auth_repository.dart';
 import '../bloc/auth_bloc.dart';
 import '../bloc/auth_events_states.dart';
 
@@ -28,7 +29,147 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController(text: _emailController.text.trim());
+    final otpController = TextEditingController();
+    final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
+
+    int step = 1;
+    bool isLoading = false;
+    String? errorMsg;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(context.tr('forgot_password')),
+              content: SizedBox(
+                width: 400,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (errorMsg != null) ...[
+                      Text(errorMsg!, style: const TextStyle(color: AppColors.danger)),
+                      const SizedBox(height: 12),
+                    ],
+                    if (step == 1) ...[
+                      TextFormField(
+                        controller: emailController,
+                        decoration: InputDecoration(
+                          labelText: context.tr('email'),
+                          prefixIcon: const Icon(Icons.email_outlined),
+                        ),
+                      ),
+                    ] else if (step == 2) ...[
+                      Text(
+                        '${context.tr('otp_sent_msg')}\n${emailController.text}',
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: otpController,
+                        maxLength: 6,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(fontSize: 20, letterSpacing: 4),
+                        decoration: const InputDecoration(hintText: '000000'),
+                      ),
+                    ] else ...[
+                      TextFormField(
+                        controller: passwordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('new_password'),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: confirmPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('confirm_password'),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text(context.tr('cancel')),
+                ),
+                ElevatedButton(
+                  onPressed: isLoading
+                      ? null
+                      : () async {
+                          setDialogState(() {
+                            isLoading = true;
+                            errorMsg = null;
+                          });
+
+                          try {
+                            final authRepo = RepositoryProvider.of<AuthRepository>(context);
+                            if (step == 1) {
+                              await authRepo.forgotPassword(emailController.text.trim());
+                              setDialogState(() {
+                                step = 2;
+                                isLoading = false;
+                              });
+                            } else if (step == 2) {
+                              await authRepo.verifyResetOtp(
+                                emailController.text.trim(),
+                                otpController.text.trim(),
+                              );
+                              setDialogState(() {
+                                step = 3;
+                                isLoading = false;
+                              });
+                            } else {
+                              if (passwordController.text != confirmPasswordController.text) {
+                                throw Exception('Passwords do not match');
+                              }
+                              await authRepo.resetPassword(
+                                email: emailController.text.trim(),
+                                otp: otpController.text.trim(),
+                                password: passwordController.text.trim(),
+                                passwordConfirmation: confirmPasswordController.text.trim(),
+                              );
+                              if (context.mounted) {
+                                Navigator.pop(dialogCtx);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Password reset successfully! Please log in.'),
+                                    backgroundColor: AppColors.success,
+                                  ),
+                                );
+                              }
+                            }
+                          } catch (e) {
+                            setDialogState(() {
+                              isLoading = false;
+                              errorMsg = e.toString().replaceAll('Exception: ', '');
+                            });
+                          }
+                        },
+                  child: isLoading
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(step == 1 ? 'Send OTP' : (step == 2 ? 'Verify' : 'Reset')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _submitLogin() {
+
     if (_formKey.currentState?.validate() ?? false) {
       context.read<AuthBloc>().add(
             LoginSubmitted(
@@ -193,7 +334,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (v) => v == null || v.isEmpty ? 'Required' : null,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 8),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: _showForgotPasswordDialog,
+                            child: Text(
+                              context.tr('forgot_password'),
+                              style: TextStyle(color: primaryColor),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                         ElevatedButton(
                           onPressed: state is AuthLoading ? null : _submitLogin,
                           style: ElevatedButton.styleFrom(
