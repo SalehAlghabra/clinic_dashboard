@@ -49,6 +49,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     final phoneController = TextEditingController(text: currentUser?.phone ?? '');
     final currentPasswordController = TextEditingController();
     final passwordController = TextEditingController();
+    final confirmPasswordController = TextEditingController();
 
     Uint8List? selectedBytes;
     String? selectedFileName;
@@ -100,7 +101,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                         },
                         icon: const Icon(Icons.photo_library_outlined, size: 18),
                         label: Text(
-                          selectedFileName != null ? selectedFileName! : 'Choose Photo from Device',
+                          selectedFileName != null ? selectedFileName! : context.tr('choose_photo_device'),
                           overflow: TextOverflow.ellipsis,
                         ),
                         style: OutlinedButton.styleFrom(
@@ -144,6 +145,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                           prefixIcon: const Icon(Icons.lock_outline),
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: confirmPasswordController,
+                        obscureText: true,
+                        decoration: InputDecoration(
+                          labelText: context.tr('confirm_password'),
+                          prefixIcon: const Icon(Icons.lock_outline),
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -161,18 +171,39 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   onPressed: isSubmitting
                       ? null
                       : () async {
+                          final pass = passwordController.text.trim();
+                          final confirmPass = confirmPasswordController.text.trim();
+                          final currPass = currentPasswordController.text.trim();
+
+                          if (pass.isNotEmpty) {
+                            if (currPass.isEmpty) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.tr('current_password')),
+                                  backgroundColor: AppColors.danger,
+                                ),
+                              );
+                              return;
+                            }
+                            if (pass != confirmPass) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.tr('passwords_do_not_match')),
+                                  backgroundColor: AppColors.danger,
+                                ),
+                              );
+                              return;
+                            }
+                          }
+
                           setDialogState(() => isSubmitting = true);
                           try {
                             final authRepo = RepositoryProvider.of<AuthRepository>(context);
-                            await authRepo.updateProfile(
+                            final updatedUser = await authRepo.updateProfile(
                               name: nameController.text.trim(),
                               phone: phoneController.text.trim(),
-                              currentPassword: currentPasswordController.text.trim().isNotEmpty
-                                  ? currentPasswordController.text.trim()
-                                  : null,
-                              password: passwordController.text.trim().isNotEmpty
-                                  ? passwordController.text.trim()
-                                  : null,
+                              currentPassword: currPass.isNotEmpty ? currPass : null,
+                              password: pass.isNotEmpty ? pass : null,
                               fileBytes: selectedBytes,
                               fileName: selectedFileName,
                             );
@@ -180,13 +211,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             if (dialogCtx.mounted) {
                               Navigator.pop(dialogCtx);
                               ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Profile updated successfully!'),
+                                SnackBar(
+                                  content: Text(context.tr('profile_updated_success')),
                                   backgroundColor: AppColors.success,
                                 ),
                               );
-                              // Refresh Auth state
-                              context.read<AuthBloc>().add(CheckAuthStatus());
+                              // Update AuthBloc immediately with newly returned user profile
+                              context.read<AuthBloc>().add(ProfileUpdated(updatedUser));
                             }
                           } catch (e) {
                             setDialogState(() => isSubmitting = false);

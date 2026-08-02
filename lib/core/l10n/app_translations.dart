@@ -118,6 +118,8 @@ class AppTranslations {
       'step_reset': 'Step 3: New Password',
       'send_otp': 'Send OTP',
       'submit': 'Submit',
+      'login_button': 'Login',
+      'passwords_do_not_match': 'New password and confirmation do not match.',
     },
     'ar': {
       'app_title': 'نظام إدارة العيادات الطبية',
@@ -235,6 +237,8 @@ class AppTranslations {
       'step_reset': 'الخطوة 3: كلمة المرور الجديدة',
       'send_otp': 'إرسال الرمز',
       'submit': 'إرسال',
+      'login_button': 'تسجيل الدخول',
+      'passwords_do_not_match': 'كلمة المرور الجديدة والتأكيد غير متطابقين.',
     },
   };
 

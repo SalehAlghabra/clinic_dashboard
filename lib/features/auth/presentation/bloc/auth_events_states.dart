@@ -31,6 +31,14 @@ class OtpSubmitted extends AuthEvent {
 
 class LogoutRequested extends AuthEvent {}
 
+class ProfileUpdated extends AuthEvent {
+  final UserModel user;
+  const ProfileUpdated(this.user);
+
+  @override
+  List<Object?> get props => [user];
+}
+
 // States
 abstract class AuthState extends Equatable {
   const AuthState();
