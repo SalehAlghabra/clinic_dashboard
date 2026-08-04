@@ -209,15 +209,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             );
 
                             if (dialogCtx.mounted) {
+                              final messenger = ScaffoldMessenger.of(context);
+                              final authBloc = context.read<AuthBloc>();
+                              final successText = context.tr('profile_updated_success');
                               Navigator.pop(dialogCtx);
-                              ScaffoldMessenger.of(context).showSnackBar(
+                              messenger.showSnackBar(
                                 SnackBar(
-                                  content: Text(context.tr('profile_updated_success')),
+                                  content: Text(successText),
                                   backgroundColor: AppColors.success,
                                 ),
                               );
-                              // Update AuthBloc immediately with newly returned user profile
-                              context.read<AuthBloc>().add(ProfileUpdated(updatedUser));
+                              authBloc.add(ProfileUpdated(updatedUser));
                             }
                           } catch (e) {
                             setDialogState(() => isSubmitting = false);

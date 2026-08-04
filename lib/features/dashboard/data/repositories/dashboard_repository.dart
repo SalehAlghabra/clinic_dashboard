@@ -19,13 +19,15 @@ class DashboardRepository {
     String? from,
     String? to,
   }) async {
-    final now = DateTime.now();
-    final startDate = from ?? DateFormat('yyyy-MM-01').format(now);
-    final endDate = to ?? DateFormat('yyyy-MM-dd').format(now);
+    if (from == null && to == null) {
+      final response = await _apiClient.get(ApiEndpoints.appointments);
+      final List data = response.data is List ? response.data : (response.data['data'] ?? []);
+      return data.map((e) => AppointmentReportItem.fromJson(e)).toList();
+    }
 
     final response = await _apiClient.get(
       ApiEndpoints.appointmentsReport,
-      queryParameters: {'from': startDate, 'to': endDate},
+      queryParameters: {'from': from, 'to': to},
     );
 
     final List data = response.data['data'] ?? [];
