@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart';
 import '../../../../core/l10n/app_translations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/dashboard_bloc.dart';
@@ -86,6 +87,25 @@ class AppointmentsManagementView extends StatelessWidget {
         );
       },
     );
+  }
+
+  String _formatDateTime(String dateStr, String timeStr) {
+    try {
+      final parsedDate = DateTime.parse(dateStr);
+      final formattedDate = DateFormat('dd MMM yyyy').format(parsedDate);
+
+      final timeParts = timeStr.split(':');
+      if (timeParts.length >= 2) {
+        final hour = int.parse(timeParts[0]);
+        final minute = int.parse(timeParts[1]);
+        final tempTime = DateTime(2026, 1, 1, hour, minute);
+        final formattedTime = DateFormat('hh:mm a').format(tempTime);
+        return '$formattedDate  •  $formattedTime';
+      }
+      return '$formattedDate  •  $timeStr';
+    } catch (_) {
+      return '$dateStr $timeStr';
+    }
   }
 
   @override
@@ -195,7 +215,7 @@ class AppointmentsManagementView extends StatelessWidget {
                                 DataCell(Text('\$${appt.consultationFee.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))),
                                 DataCell(Text('\$${appt.additionalCost.toStringAsFixed(2)}')),
                                 DataCell(Text(appt.additionalNote ?? '-')),
-                                DataCell(Text('${appt.appointmentDate} ${appt.appointmentTime}')),
+                                DataCell(Text(_formatDateTime(appt.appointmentDate, appt.appointmentTime))),
                                 DataCell(
                                   Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
