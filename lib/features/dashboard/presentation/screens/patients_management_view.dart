@@ -283,7 +283,8 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
                                   CircleAvatar(
                                     radius: 16,
                                     backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
-                                    child: Icon(Icons.person, size: 18, color: theme.primaryColor),
+                                    backgroundImage: patient.profilePictureUrl != null ? NetworkImage(patient.profilePictureUrl!) : null,
+                                    child: patient.profilePictureUrl == null ? Icon(Icons.person, size: 18, color: theme.primaryColor) : null,
                                   ),
                                   const SizedBox(width: 10),
                                   Text(

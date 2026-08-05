@@ -168,7 +168,8 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
         children: [
           CircleAvatar(
             backgroundColor: primaryColor.withValues(alpha: 0.15),
-            child: Icon(Icons.person, color: primaryColor),
+            backgroundImage: widget.doctor.profilePictureUrl != null ? NetworkImage(widget.doctor.profilePictureUrl!) : null,
+            child: widget.doctor.profilePictureUrl == null ? Icon(Icons.person, color: primaryColor) : null,
           ),
           const SizedBox(width: 12),
           Expanded(

@@ -8,8 +8,21 @@ import '../../data/repositories/dashboard_repository.dart';
 import '../../data/models/reports_models.dart';
 import '../widgets/doctor_details_modal.dart';
 
-class DoctorsManagementView extends StatelessWidget {
+class DoctorsManagementView extends StatefulWidget {
   const DoctorsManagementView({super.key});
+
+  @override
+  State<DoctorsManagementView> createState() => _DoctorsManagementViewState();
+}
+
+class _DoctorsManagementViewState extends State<DoctorsManagementView> {
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   void _showAddDoctorDialog(BuildContext context) {
     final nameController = TextEditingController();
@@ -40,6 +53,7 @@ class DoctorsManagementView extends StatelessWidget {
                 TextField(
                   controller: passwordController,
                   obscureText: true,
+                  textDirection: TextDirection.ltr,
                   decoration: InputDecoration(labelText: context.tr('password')),
                 ),
                 TextField(
@@ -174,6 +188,13 @@ class DoctorsManagementView extends StatelessWidget {
 
         if (state is DashboardLoaded) {
           final doctors = state.doctorReports;
+          final searchQuery = _searchController.text.trim().toLowerCase();
+          final filteredDoctors = searchQuery.isEmpty
+              ? doctors
+              : doctors.where((doc) {
+                  return doc.doctorName.toLowerCase().contains(searchQuery) ||
+                      doc.specialization.toLowerCase().contains(searchQuery);
+                }).toList();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
@@ -232,6 +253,43 @@ class DoctorsManagementView extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
 
+                // Search Bar Card
+                Card(
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _searchController,
+                            onChanged: (val) => setState(() {}),
+                            decoration: InputDecoration(
+                              hintText: context.tr('search_doctors'),
+                              prefixIcon: const Icon(Icons.search),
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () {
+                                        setState(() {
+                                          _searchController.clear();
+                                        });
+                                      },
+                                    )
+                                  : null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+
                 Container(
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
@@ -244,7 +302,7 @@ class DoctorsManagementView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (doctors.isEmpty)
+                      if (filteredDoctors.isEmpty)
                         Padding(
                           padding: const EdgeInsets.all(16.0),
                           child: Text(
@@ -268,14 +326,19 @@ class DoctorsManagementView extends StatelessWidget {
                               DataColumn(label: Text(context.tr('total_revenue'))),
                               DataColumn(label: Text(context.tr('actions'))),
                             ],
-                            rows: doctors.map((doc) {
+                            rows: filteredDoctors.map((doc) {
                               return DataRow(cells: [
                                 DataCell(
                                   Row(
                                     children: [
                                       CircleAvatar(
                                         backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
-                                        child: Icon(Icons.person, color: theme.primaryColor),
+                                        backgroundImage: doc.profilePictureUrl != null
+                                            ? NetworkImage(doc.profilePictureUrl!)
+                                            : null,
+                                        child: doc.profilePictureUrl == null
+                                            ? Icon(Icons.person, color: theme.primaryColor)
+                                            : null,
                                       ),
                                       const SizedBox(width: 12),
                                       Text(
@@ -286,11 +349,16 @@ class DoctorsManagementView extends StatelessWidget {
                                   ),
                                 ),
                                 DataCell(Text(doc.specialization)),
-                                DataCell(Text('\$${doc.consultationFee.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))),
+                                DataCell(Text('\$${doc.consultationFee.toStringAsFixed(2)}',
+                                    style: const TextStyle(fontWeight: FontWeight.bold))),
                                 DataCell(Text('${doc.totalAppointments}')),
-                                DataCell(Text('${doc.completed}', style: const TextStyle(color: AppColors.success, fontWeight: FontWeight.bold))),
+                                DataCell(Text('${doc.completed}',
+                                    style: const TextStyle(
+                                        color: AppColors.success, fontWeight: FontWeight.bold))),
                                 DataCell(Text('${doc.cancelled}', style: const TextStyle(color: AppColors.danger))),
-                                DataCell(Text('\$${doc.revenue.toStringAsFixed(2)}', style: TextStyle(color: theme.primaryColor, fontWeight: FontWeight.bold))),
+                                DataCell(Text('\$${doc.revenue.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                        color: theme.primaryColor, fontWeight: FontWeight.bold))),
                                 DataCell(
                                   Row(
                                     mainAxisSize: MainAxisSize.min,

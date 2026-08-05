@@ -1,3 +1,5 @@
+import '../../../../core/config/app_config.dart';
+
 double _toDouble(dynamic value) {
   if (value == null) return 0.0;
   if (value is num) return value.toDouble();
@@ -10,6 +12,34 @@ int _toInt(dynamic value) {
   if (value is num) return value.toInt();
   if (value is String) return int.tryParse(value) ?? 0;
   return 0;
+}
+
+String? _parseProfilePictureUrl(dynamic rawUrl, dynamic rawPath) {
+  String? url = rawUrl as String? ?? rawPath as String?;
+  if (url == null || url.isEmpty || url.contains('default-avatar.png')) {
+    return null;
+  }
+
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    final base = AppConfig.baseUrl.endsWith('/')
+        ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1)
+        : AppConfig.baseUrl;
+    final path = url.startsWith('/') ? url : '/$url';
+    return '$base$path';
+  }
+
+  if (url.contains('localhost') || url.contains('127.0.0.1')) {
+    final baseUri = Uri.parse(AppConfig.baseUrl);
+    final rawUri = Uri.parse(url);
+    final fixedUri = rawUri.replace(
+      scheme: baseUri.scheme,
+      host: baseUri.host,
+      port: baseUri.hasPort ? baseUri.port : null,
+    );
+    return fixedUri.toString();
+  }
+
+  return url;
 }
 
 class AppointmentReportItem {
@@ -56,6 +86,7 @@ class AppointmentReportItem {
 class DoctorReportItem {
   final int id;
   final String doctorName;
+  final String? profilePictureUrl;
   final String specialization;
   final double consultationFee;
   final int totalAppointments;
@@ -66,6 +97,7 @@ class DoctorReportItem {
   DoctorReportItem({
     required this.id,
     required this.doctorName,
+    this.profilePictureUrl,
     required this.specialization,
     required this.consultationFee,
     required this.totalAppointments,
@@ -78,6 +110,7 @@ class DoctorReportItem {
     return DoctorReportItem(
       id: _toInt(json['id']),
       doctorName: json['doctor_name'] ?? '',
+      profilePictureUrl: _parseProfilePictureUrl(json['profile_picture_url'], json['profile_picture']),
       specialization: json['specialization'] ?? '',
       consultationFee: _toDouble(json['consultation_fee']),
       totalAppointments: _toInt(json['total_appointments']),
@@ -91,6 +124,7 @@ class DoctorReportItem {
 class ViolationReportItem {
   final int id;
   final String patientName;
+  final String? profilePictureUrl;
   final String email;
   final int violationCount;
   final double totalPenalties;
@@ -99,6 +133,7 @@ class ViolationReportItem {
   ViolationReportItem({
     required this.id,
     required this.patientName,
+    this.profilePictureUrl,
     required this.email,
     required this.violationCount,
     required this.totalPenalties,
@@ -109,6 +144,7 @@ class ViolationReportItem {
     return ViolationReportItem(
       id: _toInt(json['id']),
       patientName: json['patient_name'] ?? '',
+      profilePictureUrl: _parseProfilePictureUrl(json['profile_picture_url'], json['profile_picture']),
       email: json['email'] ?? '',
       violationCount: _toInt(json['violation_count']),
       totalPenalties: _toDouble(json['total_penalties']),
@@ -164,6 +200,7 @@ class InvoiceReportItem {
 class PatientReportItem {
   final int id;
   final String patientName;
+  final String? profilePictureUrl;
   final String email;
   final String phone;
   final double walletBalance;
@@ -173,6 +210,7 @@ class PatientReportItem {
   PatientReportItem({
     required this.id,
     required this.patientName,
+    this.profilePictureUrl,
     required this.email,
     required this.phone,
     required this.walletBalance,
@@ -184,6 +222,7 @@ class PatientReportItem {
     return PatientReportItem(
       id: _toInt(json['id']),
       patientName: json['patient_name'] ?? '',
+      profilePictureUrl: _parseProfilePictureUrl(json['profile_picture_url'], json['profile_picture']),
       email: json['email'] ?? '',
       phone: json['phone'] ?? '',
       walletBalance: _toDouble(json['wallet_balance']),

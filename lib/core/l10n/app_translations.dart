@@ -95,6 +95,7 @@ class AppTranslations {
       'no_patients_found': 'No patients found.',
       'no_violations_recorded': 'No patient violations or penalties recorded.',
       'search_patients': 'Search by patient name, email, or phone...',
+      'search_doctors': 'Search by doctor name or specialization...',
 
       // Doctor Deletion & File Picker
       'delete_doctor': 'Delete Doctor',
@@ -214,6 +215,7 @@ class AppTranslations {
       'no_patients_found': 'لم يتم العثور على مرضى.',
       'no_violations_recorded': 'لا توجد مخالفات أو غرامات مرضى مسجلة.',
       'search_patients': 'البحث باسم المريض أو البريد أو رقم الهاتف...',
+      'search_doctors': 'البحث باسم الطبيب أو التخصص...',
 
       // Doctor Deletion & File Picker
       'delete_doctor': 'حذف حساب الطبيب',

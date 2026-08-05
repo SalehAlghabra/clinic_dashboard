@@ -81,6 +81,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextFormField(
                         controller: passwordController,
                         obscureText: true,
+                        textDirection: TextDirection.ltr,
                         decoration: InputDecoration(
                           labelText: context.tr('new_password'),
                           prefixIcon: const Icon(Icons.lock_outline),
@@ -90,6 +91,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       TextFormField(
                         controller: confirmPasswordController,
                         obscureText: true,
+                        textDirection: TextDirection.ltr,
                         decoration: InputDecoration(
                           labelText: context.tr('confirm_password'),
                           prefixIcon: const Icon(Icons.lock_outline),
@@ -326,6 +328,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         TextFormField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
+                          textDirection: TextDirection.ltr,
                           decoration: InputDecoration(
                             labelText: context.tr('password'),
                             prefixIcon: const Icon(Icons.lock_outline),

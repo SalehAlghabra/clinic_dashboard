@@ -131,6 +131,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       TextField(
                         controller: currentPasswordController,
                         obscureText: true,
+                        textDirection: TextDirection.ltr,
                         decoration: InputDecoration(
                           labelText: context.tr('current_password'),
                           prefixIcon: const Icon(Icons.lock_outline),
@@ -140,6 +141,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       TextField(
                         controller: passwordController,
                         obscureText: true,
+                        textDirection: TextDirection.ltr,
                         decoration: InputDecoration(
                           labelText: context.tr('new_password'),
                           prefixIcon: const Icon(Icons.lock_outline),
@@ -149,6 +151,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       TextField(
                         controller: confirmPasswordController,
                         obscureText: true,
+                        textDirection: TextDirection.ltr,
                         decoration: InputDecoration(
                           labelText: context.tr('confirm_password'),
                           prefixIcon: const Icon(Icons.lock_outline),

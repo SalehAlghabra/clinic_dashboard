@@ -47,7 +47,8 @@ class ViolationsManagementView extends StatelessWidget {
                     ListTile(
                       leading: CircleAvatar(
                         backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
-                        child: Icon(Icons.person, color: theme.primaryColor),
+                        backgroundImage: currentPatient?.profilePictureUrl != null ? NetworkImage(currentPatient!.profilePictureUrl!) : null,
+                        child: currentPatient?.profilePictureUrl == null ? Icon(Icons.person, color: theme.primaryColor) : null,
                       ),
                       title: Text(currentPatient!.patientName, style: const TextStyle(fontWeight: FontWeight.bold)),
                       subtitle: Text(currentPatient!.email),
