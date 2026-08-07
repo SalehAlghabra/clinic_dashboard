@@ -89,6 +89,13 @@ class DashboardRepository {
     );
   }
 
+  Future<void> deductWallet(int userId, double amount) async {
+    await _apiClient.post(
+      '/api/wallet/deduct/$userId',
+      data: {'amount': amount},
+    );
+  }
+
   Future<void> createDoctor({
     required String name,
     required String email,
@@ -180,13 +187,167 @@ class DashboardRepository {
     );
   }
 
-  Future<void> updateInvoicePayment(int invoiceId, String status, String paymentMethod) async {
-    await _apiClient.patch(
+  Future<Map<String, dynamic>> updateInvoicePayment(int invoiceId, String status, String paymentMethod) async {
+    final response = await _apiClient.patch(
       '${ApiEndpoints.invoices}/$invoiceId/payment',
       data: {
         'payment_status': status,
         'payment_method': paymentMethod,
       },
     );
+    return response.data is Map<String, dynamic> ? response.data : {};
+  }
+
+  Future<Map<String, dynamic>> registerPatient({
+    required String name,
+    required String email,
+    required String password,
+    required String passwordConfirmation,
+    String? phone,
+    bool staffOverride = false,
+  }) async {
+    final response = await _apiClient.post(
+      '/api/patients',
+      data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'password_confirmation': passwordConfirmation,
+        'phone': phone ?? '',
+        if (staffOverride) 'staff_override': true,
+      },
+    );
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  Future<void> verifyOtp(String email, String otp) async {
+    await _apiClient.post(
+      ApiEndpoints.verifyOtp,
+      data: {
+        'email': email,
+        'otp': otp,
+      },
+    );
+  }
+
+  Future<Map<String, dynamic>> updatePatient({
+    required int id,
+    required String name,
+    required String email,
+    String? phone,
+    bool staffOverride = false,
+    String? otp,
+  }) async {
+    final response = await _apiClient.put(
+      '/api/patients/$id',
+      data: {
+        'name': name,
+        'email': email,
+        'phone': phone ?? '',
+        if (staffOverride) 'staff_override': true,
+        if (otp != null && otp.isNotEmpty) 'otp': otp,
+      },
+    );
+    return Map<String, dynamic>.from(response.data);
+  }
+
+  Future<void> bookAppointment({
+    required int patientId,
+    required int doctorId,
+    required String date,
+    required String time,
+    String? notes,
+  }) async {
+    await _apiClient.post(
+      ApiEndpoints.appointments,
+      data: {
+        'patient_id': patientId,
+        'doctor_id': doctorId,
+        'appointment_date': date,
+        'appointment_time': time,
+        if (notes != null && notes.isNotEmpty) 'notes': notes,
+      },
+    );
+  }
+
+  Future<void> rescheduleAppointment({
+    required int appointmentId,
+    required String date,
+    required String time,
+  }) async {
+    await _apiClient.patch(
+      '${ApiEndpoints.appointments}/$appointmentId/reschedule',
+      data: {
+        'appointment_date': date,
+        'appointment_time': time,
+      },
+    );
+  }
+
+  Future<void> cancelAppointment(int appointmentId, {String? reason}) async {
+    await _apiClient.patch(
+      '${ApiEndpoints.appointments}/$appointmentId/cancel',
+      data: {
+        if (reason != null && reason.isNotEmpty) 'cancellation_reason': reason,
+      },
+    );
+  }
+
+  Future<List<InvoiceReportItem>> fetchInvoices({
+    bool billingQueue = false,
+    bool unpaid = false,
+    String? search,
+  }) async {
+    final params = <String, dynamic>{};
+    if (billingQueue) params['billing_queue'] = 1;
+    if (unpaid) params['unpaid'] = 1;
+    if (search != null && search.isNotEmpty) params['search'] = search;
+
+    final response = await _apiClient.get(ApiEndpoints.invoices, queryParameters: params);
+    final List data = response.data is List ? response.data : [];
+    return data.map((e) => InvoiceReportItem.fromJson(e)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchPatientTransactions(int patientId) async {
+    final response = await _apiClient.get('/api/wallet/transactions/$patientId');
+    final List data = response.data['data'] ?? (response.data is List ? response.data : []);
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<List<String>> fetchAvailableSlots(int doctorId, String date) async {
+    final response = await _apiClient.get(
+      '/api/doctors/$doctorId/available-slots',
+      queryParameters: {'date': date},
+    );
+    final List slots = response.data['available_slots'] ?? (response.data is List ? response.data : []);
+    return slots.map((e) => e.toString()).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> fetchReceptionists() async {
+    final response = await _apiClient.get('/api/staff/receptionists');
+    final List data = response.data['receptionists'] ?? [];
+    return List<Map<String, dynamic>>.from(data);
+  }
+
+  Future<void> createReceptionist({
+    required String name,
+    required String email,
+    required String password,
+    String? phone,
+  }) async {
+    await _apiClient.post(
+      '/api/auth/create-staff',
+      data: {
+        'name': name,
+        'email': email,
+        'password': password,
+        'phone': phone ?? '',
+        'role': 'receptionist',
+      },
+    );
+  }
+
+  Future<void> deleteStaff(int staffId) async {
+    await _apiClient.delete('/api/staff/$staffId');
   }
 }

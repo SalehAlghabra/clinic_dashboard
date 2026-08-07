@@ -8,13 +8,14 @@ import '../../data/repositories/dashboard_repository.dart';
 
 class DoctorDetailsModal extends StatefulWidget {
   final DoctorReportItem doctor;
+  final bool isReadOnly;
 
-  const DoctorDetailsModal({super.key, required this.doctor});
+  const DoctorDetailsModal({super.key, required this.doctor, this.isReadOnly = false});
 
-  static Future<void> show(BuildContext context, DoctorReportItem doctor) {
+  static Future<void> show(BuildContext context, DoctorReportItem doctor, {bool isReadOnly = false}) {
     return showDialog(
       context: context,
-      builder: (dialogContext) => DoctorDetailsModal(doctor: doctor),
+      builder: (dialogContext) => DoctorDetailsModal(doctor: doctor, isReadOnly: isReadOnly),
     );
   }
 
@@ -198,6 +199,7 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
                   Expanded(
                     child: TextField(
                       controller: _specController,
+                      readOnly: widget.isReadOnly,
                       decoration: InputDecoration(labelText: context.tr('specialization')),
                     ),
                   ),
@@ -205,16 +207,19 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
                   Expanded(
                     child: TextField(
                       controller: _feeController,
+                      readOnly: widget.isReadOnly,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(labelText: context.tr('consultation_fee')),
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  ElevatedButton(
-                    onPressed: _updateDoctorInfo,
-                    style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
-                    child: Text(context.tr('save_changes')),
-                  ),
+                  if (!widget.isReadOnly) ...[
+                    const SizedBox(width: 12),
+                    ElevatedButton(
+                      onPressed: _updateDoctorInfo,
+                      style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
+                      child: Text(context.tr('save_changes')),
+                    ),
+                  ],
                 ],
               ),
               const Divider(height: 32),
@@ -248,66 +253,70 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
                                       leading: Icon(Icons.access_time, color: primaryColor),
                                       title: Text(sch.dayOfWeek.toUpperCase(), style: const TextStyle(fontWeight: FontWeight.bold)),
                                       subtitle: Text('${sch.startTime} - ${sch.endTime} (${sch.durationPerPatient} ${context.tr('duration_mins')})'),
-                                      trailing: IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-                                        onPressed: () => _deleteSchedule(sch.id),
-                                      ),
+                                      trailing: widget.isReadOnly
+                                          ? null
+                                          : IconButton(
+                                              icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                                              onPressed: () => _deleteSchedule(sch.id),
+                                            ),
                                     ),
                                   );
                                 },
                               ),
-                            const SizedBox(height: 16),
-                            Text(context.tr('add_schedule_day'), style: const TextStyle(fontWeight: FontWeight.bold)),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: DropdownButtonFormField<String>(
-                                    value: _selectedDay,
-                                    decoration: InputDecoration(labelText: context.tr('day_of_week')),
-                                    items: _days.map((d) => DropdownMenuItem(value: d, child: Text(d.toUpperCase()))).toList(),
-                                    onChanged: (val) {
-                                      if (val != null) setState(() => _selectedDay = val);
-                                    },
+                            if (!widget.isReadOnly) ...[
+                              const SizedBox(height: 16),
+                              Text(context.tr('add_schedule_day'), style: const TextStyle(fontWeight: FontWeight.bold)),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: DropdownButtonFormField<String>(
+                                      initialValue: _selectedDay,
+                                      decoration: InputDecoration(labelText: context.tr('day_of_week')),
+                                      items: _days.map((d) => DropdownMenuItem(value: d, child: Text(d.toUpperCase()))).toList(),
+                                      onChanged: (val) {
+                                        if (val != null) setState(() => _selectedDay = val);
+                                      },
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _startTimeController,
-                                    decoration: InputDecoration(labelText: context.tr('start_time'), hintText: '09:00'),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _startTimeController,
+                                      decoration: InputDecoration(labelText: context.tr('start_time'), hintText: '09:00'),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _endTimeController,
-                                    decoration: InputDecoration(labelText: context.tr('end_time'), hintText: '17:00'),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _endTimeController,
+                                      decoration: InputDecoration(labelText: context.tr('end_time'), hintText: '17:00'),
+                                    ),
                                   ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: TextField(
-                                    controller: _durationController,
-                                    keyboardType: TextInputType.number,
-                                    decoration: InputDecoration(labelText: context.tr('duration_mins')),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: TextField(
+                                      controller: _durationController,
+                                      keyboardType: TextInputType.number,
+                                      decoration: InputDecoration(labelText: context.tr('duration_mins')),
+                                    ),
                                   ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            Align(
-                              alignment: Alignment.centerRight,
-                              child: ElevatedButton.icon(
-                                onPressed: _addSchedule,
-                                icon: const Icon(Icons.add),
-                                label: Text(context.tr('add_day_schedule')),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: primaryColor,
-                                  foregroundColor: Colors.white,
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: ElevatedButton.icon(
+                                  onPressed: _addSchedule,
+                                  icon: const Icon(Icons.add),
+                                  label: Text(context.tr('add_day_schedule')),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: primaryColor,
+                                    foregroundColor: Colors.white,
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ],
                         ),
             ],

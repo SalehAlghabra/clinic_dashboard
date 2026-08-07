@@ -20,64 +20,88 @@ String? _parseProfilePictureUrl(dynamic rawUrl, dynamic rawPath) {
     return null;
   }
 
-  if (!url.startsWith('http://') && !url.startsWith('https://')) {
-    final base = AppConfig.baseUrl.endsWith('/')
-        ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1)
-        : AppConfig.baseUrl;
-    final path = url.startsWith('/') ? url : '/$url';
-    return '$base$path';
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    // Already absolute — fix host if using localhost/127.0.0.1
+    if (url.contains('localhost') || url.contains('127.0.0.1')) {
+      final baseUri = Uri.parse(AppConfig.baseUrl);
+      final rawUri = Uri.parse(url);
+      final fixedUri = rawUri.replace(
+        scheme: baseUri.scheme,
+        host: baseUri.host,
+        port: baseUri.hasPort ? baseUri.port : null,
+      );
+      return fixedUri.toString();
+    }
+    return url;
   }
 
-  if (url.contains('localhost') || url.contains('127.0.0.1')) {
-    final baseUri = Uri.parse(AppConfig.baseUrl);
-    final rawUri = Uri.parse(url);
-    final fixedUri = rawUri.replace(
-      scheme: baseUri.scheme,
-      host: baseUri.host,
-      port: baseUri.hasPort ? baseUri.port : null,
-    );
-    return fixedUri.toString();
+  // Relative path — prepend base URL + /storage/
+  final base = AppConfig.baseUrl.endsWith('/')
+      ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1)
+      : AppConfig.baseUrl;
+  // Remove leading slash if any
+  final cleanPath = url.startsWith('/') ? url.substring(1) : url;
+  // If the path already starts with "storage/", don't double up
+  if (cleanPath.startsWith('storage/')) {
+    return '$base/$cleanPath';
   }
-
-  return url;
+  return '$base/storage/$cleanPath';
 }
 
 class AppointmentReportItem {
   final int id;
+  final int patientId;
   final String patientName;
+  final String? patientEmail;
+  final String? patientPhone;
+  final int doctorId;
   final String doctorName;
+  final String? specialization;
   final double consultationFee;
   final double additionalCost;
   final String? additionalNote;
   final String appointmentDate;
   final String appointmentTime;
   final String status;
+  final String? notes;
   final String? cancelledBy;
 
   AppointmentReportItem({
     required this.id,
+    this.patientId = 0,
     required this.patientName,
+    this.patientEmail,
+    this.patientPhone,
+    this.doctorId = 0,
     required this.doctorName,
+    this.specialization,
     required this.consultationFee,
     required this.additionalCost,
     this.additionalNote,
     required this.appointmentDate,
     required this.appointmentTime,
     required this.status,
+    this.notes,
     this.cancelledBy,
   });
 
   factory AppointmentReportItem.fromJson(Map<String, dynamic> json) {
     return AppointmentReportItem(
       id: _toInt(json['id']),
+      patientId: _toInt(json['patient_id']),
       patientName: json['patient_name'] ?? 'Unknown Patient',
+      patientEmail: json['patient_email'],
+      patientPhone: json['patient_phone'],
+      doctorId: _toInt(json['doctor_id']),
       doctorName: json['doctor_name'] ?? 'Unknown Doctor',
+      specialization: json['specialization'],
       consultationFee: _toDouble(json['consultation_fee']),
       additionalCost: _toDouble(json['additional_cost']),
       additionalNote: json['additional_note'],
       appointmentDate: json['appointment_date'] ?? '',
       appointmentTime: json['appointment_time'] ?? '',
       status: json['status'] ?? 'pending',
+      notes: json['notes'],
       cancelledBy: json['cancelled_by'],
     );
   }
@@ -156,9 +180,16 @@ class ViolationReportItem {
 class InvoiceReportItem {
   final int id;
   final int appointmentId;
+  final int patientId;
   final String patientName;
+  final String? patientEmail;
+  final String? patientPhone;
+  final String? profilePictureUrl;
+  final double walletBalance;
   final String doctorName;
   final double consultationFee;
+  final double additionalCost;
+  final String? additionalNote;
   final double totalAmount;
   final double alreadyPaid;
   final double remainingAmount;
@@ -169,9 +200,16 @@ class InvoiceReportItem {
   InvoiceReportItem({
     required this.id,
     required this.appointmentId,
+    required this.patientId,
     required this.patientName,
+    this.patientEmail,
+    this.patientPhone,
+    this.profilePictureUrl,
+    this.walletBalance = 0.0,
     required this.doctorName,
     required this.consultationFee,
+    this.additionalCost = 0.0,
+    this.additionalNote,
     required this.totalAmount,
     required this.alreadyPaid,
     required this.remainingAmount,
@@ -184,9 +222,16 @@ class InvoiceReportItem {
     return InvoiceReportItem(
       id: _toInt(json['id']),
       appointmentId: _toInt(json['appointment_id']),
+      patientId: _toInt(json['patient_id']),
       patientName: json['patient_name'] ?? 'N/A',
+      patientEmail: json['patient_email'],
+      patientPhone: json['patient_phone'],
+      profilePictureUrl: _parseProfilePictureUrl(json['profile_picture_url'], json['profile_picture']),
+      walletBalance: _toDouble(json['wallet_balance']),
       doctorName: json['doctor_name'] ?? 'N/A',
       consultationFee: _toDouble(json['consultation_fee']),
+      additionalCost: _toDouble(json['additional_cost']),
+      additionalNote: json['additional_note'],
       totalAmount: _toDouble(json['total_amount']),
       alreadyPaid: _toDouble(json['already_paid'] ?? json['deposit_amount']),
       remainingAmount: _toDouble(json['remaining_amount']),

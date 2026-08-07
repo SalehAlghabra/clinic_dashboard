@@ -96,6 +96,25 @@ class AppTranslations {
       'no_violations_recorded': 'No patient violations or penalties recorded.',
       'search_patients': 'Search by patient name, email, or phone...',
       'search_doctors': 'Search by doctor name or specialization...',
+      'billing_queue': 'Billing Queue',
+      'all_invoices': 'All Invoices',
+      'register_patient': 'Register New Patient',
+      'edit_patient': 'Edit Patient Info',
+      'patient_profile': 'Patient Profile & Wallet',
+      'confirm_wallet_payment': 'Confirm Payment from Wallet',
+      'reschedule_appointment': 'Reschedule Appointment',
+      'todays_appointments': "Today's Appointments",
+      'book_for_patient': 'Book for Patient',
+      'payment_success_title': 'Payment Completed Successfully',
+      'amount_paid': 'Amount Paid',
+      'updated_wallet_balance': 'Current Wallet Balance',
+      'search_appointments': 'Search by patient name, doctor, date, or status...',
+      'patient_in_person_authorization': 'Confirm that you have obtained the patient\'s in-person approval to deduct payment from their wallet.',
+      'staff_override_notice': 'In-Person Identity Verification (Staff Override)',
+      'enter_email_otp': 'Enter Email OTP Verification',
+      'otp_sent_notice': 'A 6-digit OTP code has been sent to the new email address.',
+      'verify_and_save': 'Verify & Save Email',
+      'save_changes': 'Save Changes',
 
       // Doctor Deletion & File Picker
       'delete_doctor': 'Delete Doctor',
@@ -121,6 +140,47 @@ class AppTranslations {
       'submit': 'Submit',
       'login_button': 'Login',
       'passwords_do_not_match': 'New password and confirmation do not match.',
+      // Receptionist management
+      'receptionists': 'Receptionists',
+      'manage_receptionists': 'Manage receptionist accounts',
+      'add_receptionist': 'Add Receptionist',
+      'create_account': 'Create Account',
+      'full_name': 'Full Name',
+      // Appointment status filter chips
+      'filter_all': 'All',
+      'filter_pending': 'Pending',
+      'filter_confirmed': 'Confirmed',
+      'filter_completed': 'Completed',
+      'filter_cancelled': 'Cancelled',
+      // Appointment actions
+      'cancel_appointment': 'Cancel Appointment',
+      'cancel_appointment_confirm': 'Cancel appointment #{id} for {name}?',
+      'confirm_cancellation': 'Confirm Cancellation',
+      'complete_visit': 'Complete Visit',
+      'complete_and_invoice': 'Complete & Issue Invoice',
+      // Transaction history
+      'transaction_history': 'Transaction History',
+      'no_transactions': 'No transaction logs available.',
+      // Receptionist feedback
+      'receptionist_created_success': 'Receptionist account created successfully!',
+      'receptionist_deleted_success': 'Receptionist deleted successfully.',
+      'delete_receptionist': 'Delete Receptionist',
+      'no_receptionists_found': 'No receptionist accounts found.',
+      'search_by_name_email': 'Search by name or email...',
+      'created': 'Created',
+      // Patient management feedback
+      'patient_updated_success': 'Patient info updated successfully!',
+      'patient_email_verified_success': 'Patient email verified and updated successfully!',
+      'patient_registered_verified_success': 'Patient registered and verified successfully!',
+      'confirm_password': 'Confirm Password',
+      // Invoice / billing
+      'top_up_now': 'Top Up Now',
+      'no_available_slots': 'No available time slots on this date.',
+      'search_by_doctor_name_specialization': 'Search by name or specialization...',
+      // Deposit
+      'deposit_failed': 'Deposit failed.',
+      // Errors
+      'error_occurred': 'An error occurred. Please try again.',
     },
     'ar': {
       'app_title': 'نظام إدارة العيادات الطبية',
@@ -216,6 +276,25 @@ class AppTranslations {
       'no_violations_recorded': 'لا توجد مخالفات أو غرامات مرضى مسجلة.',
       'search_patients': 'البحث باسم المريض أو البريد أو رقم الهاتف...',
       'search_doctors': 'البحث باسم الطبيب أو التخصص...',
+      'billing_queue': 'قائمة الفوترة والتحصيل',
+      'all_invoices': 'جميع الفواتير',
+      'register_patient': 'تسجيل مريض جديد',
+      'edit_patient': 'تعديل بيانات المريض',
+      'patient_profile': 'ملف المريض والمحفظة',
+      'confirm_wallet_payment': 'تأكيد الدفع من المحفظة',
+      'reschedule_appointment': 'إعادة جدولة الموعد',
+      'todays_appointments': 'مواعيد اليوم',
+      'book_for_patient': 'حجز موعد لمريض',
+      'payment_success_title': 'تم تحصيل المبلغ بنجاح',
+      'amount_paid': 'المبلغ المدفوع',
+      'updated_wallet_balance': 'رصيد المحفظة الحالي',
+      'search_appointments': 'البحث باسم المريض، الطبيب، التاريخ، أو الحالة...',
+      'patient_in_person_authorization': 'تأكيد الحصول على موافقة المريض الشخصية لخصم المبلغ من محفظته.',
+      'staff_override_notice': 'تأكيد الهوية شخصياً (تجاوز الموظف)',
+      'enter_email_otp': 'أدخل رمز التحقق OTP للبريد الإلكتروني',
+      'otp_sent_notice': 'تم إرسال رمز تحقق مكون من 6 أرقام إلى البريد الإلكتروني الجديد.',
+      'verify_and_save': 'تأكيد وحفظ البريد الإلكتروني',
+      'save_changes': 'حفظ التغييرات',
 
       // Doctor Deletion & File Picker
       'delete_doctor': 'حذف حساب الطبيب',
@@ -241,6 +320,47 @@ class AppTranslations {
       'submit': 'إرسال',
       'login_button': 'تسجيل الدخول',
       'passwords_do_not_match': 'كلمة المرور الجديدة والتأكيد غير متطابقين.',
+      // Receptionist management
+      'receptionists': 'موظفو الاستقبال',
+      'manage_receptionists': 'إدارة حسابات الاستقبال',
+      'add_receptionist': 'إضافة موظف استقبال',
+      'create_account': 'إنشاء الحساب',
+      'full_name': 'الاسم الكامل',
+      // Appointment status filter chips
+      'filter_all': 'الكل',
+      'filter_pending': 'قيد الانتظار',
+      'filter_confirmed': 'مؤكدة',
+      'filter_completed': 'مكتملة',
+      'filter_cancelled': 'ملغاة',
+      // Appointment actions
+      'cancel_appointment': 'إلغاء الموعد',
+      'cancel_appointment_confirm': 'إلغاء الموعد #{id} للمريض {name}؟',
+      'confirm_cancellation': 'تأكيد الإلغاء',
+      'complete_visit': 'إتمام الزيارة',
+      'complete_and_invoice': 'إتمام الزيارة وإصدار الفاتورة',
+      // Transaction history
+      'transaction_history': 'سجل المعاملات',
+      'no_transactions': 'لا توجد معاملات مسجلة.',
+      // Receptionist feedback
+      'receptionist_created_success': 'تم إنشاء حساب موظف الاستقبال بنجاح!',
+      'receptionist_deleted_success': 'تم حذف موظف الاستقبال بنجاح.',
+      'delete_receptionist': 'حذف موظف الاستقبال',
+      'no_receptionists_found': 'لا توجد حسابات موظفي استقبال.',
+      'search_by_name_email': 'البحث بالاسم أو البريد الإلكتروني...',
+      'created': 'تاريخ الإنشاء',
+      // Patient management feedback
+      'patient_updated_success': 'تم تحديث بيانات المريض بنجاح!',
+      'patient_email_verified_success': 'تم التحقق من البريد الإلكتروني وتحديثه بنجاح!',
+      'patient_registered_verified_success': 'تم تسجيل المريض والتحقق من حسابه بنجاح!',
+      'confirm_password': 'تأكيد كلمة المرور',
+      // Invoice / billing
+      'top_up_now': 'إيداع الآن',
+      'no_available_slots': 'لا توجد مواعيد متاحة في هذا اليوم.',
+      'search_by_doctor_name_specialization': 'البحث بالاسم أو التخصص...',
+      // Deposit
+      'deposit_failed': 'فشل الإيداع.',
+      // Errors
+      'error_occurred': 'حدث خطأ. الرجاء المحاولة مرة أخرى.',
     },
   };
 

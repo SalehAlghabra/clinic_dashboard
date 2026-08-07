@@ -6,6 +6,8 @@ import '../bloc/dashboard_bloc.dart';
 import '../bloc/dashboard_events_states.dart';
 import '../../data/repositories/dashboard_repository.dart';
 import '../../data/models/reports_models.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
+import '../../../auth/presentation/bloc/auth_events_states.dart';
 import '../widgets/doctor_details_modal.dart';
 
 class DoctorsManagementView extends StatefulWidget {
@@ -17,11 +19,45 @@ class DoctorsManagementView extends StatefulWidget {
 
 class _DoctorsManagementViewState extends State<DoctorsManagementView> {
   final TextEditingController _searchController = TextEditingController();
+  List<DoctorReportItem> _doctors = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDoctors();
+  }
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadDoctors() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
+    try {
+      final repo = context.read<DashboardRepository>();
+      final list = await repo.fetchDoctorsReport();
+      if (mounted) {
+        setState(() {
+          _doctors = list;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceAll('ApiException: ', '');
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   void _showAddDoctorDialog(BuildContext context) {
@@ -82,45 +118,45 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
               child: Text(context.tr('cancel')),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.tealPrimary,
-                foregroundColor: Colors.white,
-              ),
               onPressed: () async {
+                final name = nameController.text.trim();
+                final email = emailController.text.trim();
+                final password = passwordController.text.trim();
+                final phone = phoneController.text.trim();
+                final spec = specController.text.trim();
+                final fee = double.tryParse(feeController.text.trim()) ?? 0.0;
+                final bio = bioController.text.trim();
+
+                if (name.isEmpty || email.isEmpty || password.isEmpty || spec.isEmpty) {
+                  return;
+                }
+
                 try {
                   final repo = context.read<DashboardRepository>();
-                  final fee = double.tryParse(feeController.text.trim()) ?? 0.0;
                   await repo.createDoctor(
-                    name: nameController.text.trim(),
-                    email: emailController.text.trim(),
-                    password: passwordController.text.trim(),
-                    phone: phoneController.text.trim(),
-                    specialization: specController.text.trim(),
+                    name: name,
+                    email: email,
+                    password: password,
+                    phone: phone,
+                    specialization: spec,
                     consultationFee: fee,
-                    bio: bioController.text.trim(),
+                    bio: bio,
                   );
+
                   if (dialogContext.mounted) {
                     Navigator.pop(dialogContext);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Doctor account created successfully!'),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
+                    _loadDoctors();
                     context.read<DashboardBloc>().add(RefreshDashboard());
                   }
                 } catch (e) {
                   if (dialogContext.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Failed: ${e.toString()}'),
-                        backgroundColor: AppColors.danger,
-                      ),
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
                     );
                   }
                 }
               },
-              child: const Text('Create Doctor'),
+              child: Text(context.tr('add_doctor')),
             ),
           ],
         );
@@ -128,13 +164,13 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
     );
   }
 
-  void _confirmDeleteDoctor(BuildContext context, DoctorReportItem doc) {
+  void _confirmDeleteDoctor(BuildContext context, DoctorReportItem doctor) {
     showDialog(
       context: context,
       builder: (dialogCtx) {
         return AlertDialog(
           title: Text(context.tr('delete_doctor')),
-          content: Text('${context.tr('delete_doctor_confirm')}\n(${doc.doctorName})'),
+          content: Text(context.tr('delete_doctor_confirm')),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(dialogCtx),
@@ -148,21 +184,16 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
               onPressed: () async {
                 try {
                   final repo = context.read<DashboardRepository>();
-                  await repo.deleteDoctor(doc.id);
+                  await repo.deleteDoctor(doctor.id);
                   if (dialogCtx.mounted) {
                     Navigator.pop(dialogCtx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(context.tr('doctor_deleted_success')),
-                        backgroundColor: AppColors.success,
-                      ),
-                    );
+                    _loadDoctors();
                     context.read<DashboardBloc>().add(RefreshDashboard());
                   }
                 } catch (e) {
                   if (dialogCtx.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.danger),
+                      SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.danger),
                     );
                   }
                 }
@@ -179,222 +210,221 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final authState = context.watch<AuthBloc>().state;
+    final userRole = authState is Authenticated ? authState.user.role : 'admin';
+    final isReceptionist = userRole == 'receptionist';
 
-    return BlocBuilder<DashboardBloc, DashboardState>(
-      builder: (context, state) {
-        if (state is DashboardLoading || state is DashboardInitial) {
-          return const Center(child: CircularProgressIndicator(color: AppColors.tealPrimary));
-        }
+    final searchQuery = _searchController.text.trim().toLowerCase();
+    final filteredDoctors = searchQuery.isEmpty
+        ? _doctors
+        : _doctors.where((doc) {
+            return doc.doctorName.toLowerCase().contains(searchQuery) ||
+                doc.specialization.toLowerCase().contains(searchQuery);
+          }).toList();
 
-        if (state is DashboardLoaded) {
-          final doctors = state.doctorReports;
-          final searchQuery = _searchController.text.trim().toLowerCase();
-          final filteredDoctors = searchQuery.isEmpty
-              ? doctors
-              : doctors.where((doc) {
-                  return doc.doctorName.toLowerCase().contains(searchQuery) ||
-                      doc.specialization.toLowerCase().contains(searchQuery);
-                }).toList();
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr('doctors'),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    context.tr('doctor_performance'),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _loadDoctors,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: Text(context.tr('refresh')),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.primaryColor,
+                      side: BorderSide(color: theme.primaryColor),
+                    ),
+                  ),
+                  if (!isReceptionist) ...[
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: () => _showAddDoctorDialog(context),
+                      icon: const Icon(Icons.add),
+                      label: Text(context.tr('add_doctor')),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.primaryColor,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+          // Search Bar
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (val) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: context.tr('search_doctors'),
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() => _searchController.clear()),
+                        )
+                      : null,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.darkSurface : Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+              ),
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          context.tr('doctors'),
-                          style: theme.textTheme.headlineSmall?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          context.tr('doctor_performance'),
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        OutlinedButton.icon(
-                          onPressed: () => context.read<DashboardBloc>().add(RefreshDashboard()),
-                          icon: const Icon(Icons.refresh, size: 18),
-                          label: Text(context.tr('refresh')),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: theme.primaryColor,
-                            side: BorderSide(color: theme.primaryColor),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        ElevatedButton.icon(
-                          onPressed: () => _showAddDoctorDialog(context),
-                          icon: const Icon(Icons.add),
-                          label: Text(context.tr('add_doctor')),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: theme.primaryColor,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-
-                // Search Bar Card
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
-                  ),
-                  child: Padding(
+                if (_isLoading)
+                  const Padding(
+                    padding: EdgeInsets.all(32.0),
+                    child: Center(child: CircularProgressIndicator()),
+                  )
+                else if (_errorMessage != null)
+                  Padding(
+                    padding: const EdgeInsets.all(32.0),
+                    child: Center(child: Text(_errorMessage!, style: const TextStyle(color: AppColors.danger))),
+                  )
+                else if (filteredDoctors.isEmpty)
+                  Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _searchController,
-                            onChanged: (val) => setState(() {}),
-                            decoration: InputDecoration(
-                              hintText: context.tr('search_doctors'),
-                              prefixIcon: const Icon(Icons.search),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? IconButton(
-                                      icon: const Icon(Icons.clear),
-                                      onPressed: () {
-                                        setState(() {
-                                          _searchController.clear();
-                                        });
-                                      },
-                                    )
-                                  : null,
-                            ),
-                          ),
-                        ),
+                    child: Text(
+                      context.tr('no_doctors_listed'),
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      ),
+                    ),
+                  )
+                else
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      columns: [
+                        DataColumn(label: Text(context.tr('doctor_name'))),
+                        DataColumn(label: Text(context.tr('specialization'))),
+                        DataColumn(label: Text(context.tr('consultation_fee'))),
+                        DataColumn(label: Text(context.tr('total_appointments'))),
+                        DataColumn(label: Text(context.tr('completed_appointments'))),
+                        DataColumn(label: Text(context.tr('cancelled_appointments'))),
+                        DataColumn(label: Text(context.tr('total_revenue'))),
+                        DataColumn(label: Text(context.tr('actions'))),
                       ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.darkSurface : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (filteredDoctors.isEmpty)
-                        Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Text(
-                            context.tr('no_doctors_listed'),
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                      rows: filteredDoctors.map((doc) {
+                        return DataRow(cells: [
+                          DataCell(
+                            Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
+                                  child: ClipOval(
+                                    child: doc.profilePictureUrl != null
+                                        ? Image.network(
+                                            doc.profilePictureUrl!,
+                                            width: 40,
+                                            height: 40,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) => Icon(Icons.person, color: theme.primaryColor),
+                                          )
+                                        : Icon(Icons.person, color: theme.primaryColor),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  doc.doctorName,
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
                             ),
                           ),
-                        )
-                      else
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
-                            columns: [
-                              DataColumn(label: Text(context.tr('doctor_name'))),
-                              DataColumn(label: Text(context.tr('specialization'))),
-                              DataColumn(label: Text(context.tr('consultation_fee'))),
-                              DataColumn(label: Text(context.tr('total_appointments'))),
-                              DataColumn(label: Text(context.tr('completed_appointments'))),
-                              DataColumn(label: Text(context.tr('cancelled_appointments'))),
-                              DataColumn(label: Text(context.tr('total_revenue'))),
-                              DataColumn(label: Text(context.tr('actions'))),
-                            ],
-                            rows: filteredDoctors.map((doc) {
-                              return DataRow(cells: [
-                                DataCell(
-                                  Row(
-                                    children: [
-                                      CircleAvatar(
-                                        backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
-                                        backgroundImage: doc.profilePictureUrl != null
-                                            ? NetworkImage(doc.profilePictureUrl!)
-                                            : null,
-                                        child: doc.profilePictureUrl == null
-                                            ? Icon(Icons.person, color: theme.primaryColor)
-                                            : null,
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        doc.doctorName,
-                                        style: const TextStyle(fontWeight: FontWeight.bold),
-                                      ),
-                                    ],
+                          DataCell(Text(doc.specialization)),
+                          DataCell(Text('\$${doc.consultationFee.toStringAsFixed(2)}',
+                              style: const TextStyle(fontWeight: FontWeight.bold))),
+                          DataCell(Text('${doc.totalAppointments}')),
+                          DataCell(Text('${doc.completed}',
+                              style: const TextStyle(
+                                  color: AppColors.success, fontWeight: FontWeight.bold))),
+                          DataCell(Text('${doc.cancelled}', style: const TextStyle(color: AppColors.danger))),
+                          DataCell(Text('\$${doc.revenue.toStringAsFixed(2)}',
+                              style: TextStyle(
+                                  color: theme.primaryColor, fontWeight: FontWeight.bold))),
+                          DataCell(
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: () => DoctorDetailsModal.show(context, doc, isReadOnly: isReceptionist),
+                                  icon: const Icon(Icons.edit_calendar, size: 16),
+                                  label: Text(context.tr('schedule_and_details')),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: theme.primaryColor,
+                                    side: BorderSide(color: theme.primaryColor),
                                   ),
                                 ),
-                                DataCell(Text(doc.specialization)),
-                                DataCell(Text('\$${doc.consultationFee.toStringAsFixed(2)}',
-                                    style: const TextStyle(fontWeight: FontWeight.bold))),
-                                DataCell(Text('${doc.totalAppointments}')),
-                                DataCell(Text('${doc.completed}',
-                                    style: const TextStyle(
-                                        color: AppColors.success, fontWeight: FontWeight.bold))),
-                                DataCell(Text('${doc.cancelled}', style: const TextStyle(color: AppColors.danger))),
-                                DataCell(Text('\$${doc.revenue.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                        color: theme.primaryColor, fontWeight: FontWeight.bold))),
-                                DataCell(
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      OutlinedButton.icon(
-                                        onPressed: () => DoctorDetailsModal.show(context, doc),
-                                        icon: const Icon(Icons.edit_calendar, size: 16),
-                                        label: Text(context.tr('schedule_and_details')),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: theme.primaryColor,
-                                          side: BorderSide(color: theme.primaryColor),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-                                        tooltip: 'Delete Doctor',
-                                        onPressed: () => _confirmDeleteDoctor(context, doc),
-                                      ),
-                                    ],
+                                if (!isReceptionist) ...[
+                                  const SizedBox(width: 8),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                                    tooltip: 'Delete Doctor',
+                                    onPressed: () => _confirmDeleteDoctor(context, doc),
                                   ),
-                                ),
-                              ]);
-                            }).toList(),
+                                ],
+                              ],
+                            ),
                           ),
-                        ),
-                    ],
+                        ]);
+                      }).toList(),
+                    ),
                   ),
-                ),
               ],
             ),
-          );
-        }
-
-        return const SizedBox.shrink();
-      },
+          ),
+        ],
+      ),
     );
   }
 }

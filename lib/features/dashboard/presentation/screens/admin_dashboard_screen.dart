@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/l10n/app_translations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../auth/data/models/user_model.dart';
@@ -18,6 +19,7 @@ import 'patients_management_view.dart';
 import 'appointments_management_view.dart';
 import 'invoices_management_view.dart';
 import 'violations_management_view.dart';
+import 'receptionists_management_view.dart';
 
 import '../widgets/theme_color_picker_dialog.dart';
 
@@ -113,7 +115,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       TextField(
                         controller: nameController,
                         decoration: InputDecoration(
-                          labelText: context.tr('patient_name'),
+                          labelText: context.tr('full_name'),
                           prefixIcon: const Icon(Icons.person_outline),
                         ),
                       ),
@@ -228,7 +230,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             setDialogState(() => isSubmitting = false);
                             if (dialogCtx.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Failed: ${e.toString()}'), backgroundColor: AppColors.danger),
+                                SnackBar(content: Text(parseErrorMessage(e)), backgroundColor: AppColors.danger),
                               );
                             }
                           }
@@ -262,21 +264,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         icon: Icons.dashboard_outlined,
         selectedIcon: Icons.dashboard,
         page: const DashboardOverviewView(),
-        roles: ['admin', 'receptionist'],
-      ),
-      _NavItem(
-        label: context.tr('doctors'),
-        icon: Icons.medical_services_outlined,
-        selectedIcon: Icons.medical_services,
-        page: const DoctorsManagementView(),
-        roles: ['admin'], // Hidden for Receptionists
-      ),
-      _NavItem(
-        label: context.tr('patients'),
-        icon: Icons.people_outline,
-        selectedIcon: Icons.people,
-        page: const PatientsManagementView(),
-        roles: ['admin', 'receptionist'],
+        roles: ['admin'],
       ),
       _NavItem(
         label: context.tr('appointments'),
@@ -286,10 +274,24 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         roles: ['admin', 'receptionist'],
       ),
       _NavItem(
-        label: context.tr('invoices'),
+        label: context.tr('billing_queue'),
         icon: Icons.receipt_long_outlined,
         selectedIcon: Icons.receipt_long,
         page: const InvoicesManagementView(),
+        roles: ['admin', 'receptionist'],
+      ),
+      _NavItem(
+        label: context.tr('patients'),
+        icon: Icons.people_outline,
+        selectedIcon: Icons.people,
+        page: const PatientsManagementView(),
+        roles: ['admin', 'receptionist'],
+      ),
+      _NavItem(
+        label: context.tr('doctors'),
+        icon: Icons.medical_services_outlined,
+        selectedIcon: Icons.medical_services,
+        page: const DoctorsManagementView(),
         roles: ['admin', 'receptionist'],
       ),
       _NavItem(
@@ -297,7 +299,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         icon: Icons.gavel_outlined,
         selectedIcon: Icons.gavel,
         page: const ViolationsManagementView(),
-        roles: ['admin', 'receptionist'],
+        roles: ['admin'],
+      ),
+      _NavItem(
+        label: context.tr('receptionists'),
+        icon: Icons.badge_outlined,
+        selectedIcon: Icons.badge,
+        page: const ReceptionistsManagementView(),
+        roles: ['admin'],
       ),
     ];
 

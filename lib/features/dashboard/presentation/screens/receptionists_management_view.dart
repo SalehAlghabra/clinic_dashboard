@@ -1,0 +1,400 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/api/api_exceptions.dart';
+import '../../../../core/l10n/app_translations.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../data/repositories/dashboard_repository.dart';
+
+class ReceptionistsManagementView extends StatefulWidget {
+  const ReceptionistsManagementView({super.key});
+
+  @override
+  State<ReceptionistsManagementView> createState() => _ReceptionistsManagementViewState();
+}
+
+class _ReceptionistsManagementViewState extends State<ReceptionistsManagementView> {
+  List<Map<String, dynamic>> _receptionists = [];
+  bool _isLoading = true;
+  String? _errorMessage;
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReceptionists();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadReceptionists() async {
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+    try {
+      final repo = context.read<DashboardRepository>();
+      final list = await repo.fetchReceptionists();
+      if (mounted) {
+        setState(() {
+          _receptionists = list;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = parseErrorMessage(e);
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  void _showAddReceptionistDialog() {
+    final nameController = TextEditingController();
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController(text: 'password123');
+    final phoneController = TextEditingController();
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final theme = Theme.of(context);
+            return AlertDialog(
+              title: Text(context.tr('add_receptionist')),
+              content: SizedBox(
+                width: 400,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(labelText: context.tr('full_name')),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(labelText: context.tr('email')),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: passwordController,
+                        obscureText: true,
+                        textDirection: TextDirection.ltr,
+                        decoration: InputDecoration(labelText: context.tr('password')),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(labelText: context.tr('phone')),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text(context.tr('cancel')),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: theme.primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final name = nameController.text.trim();
+                          final email = emailController.text.trim();
+                          final password = passwordController.text.trim();
+                          final phone = phoneController.text.trim();
+                          if (name.isEmpty || email.isEmpty || password.isEmpty) return;
+
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final repo = context.read<DashboardRepository>();
+                            await repo.createReceptionist(
+                              name: name,
+                              email: email,
+                              password: password,
+                              phone: phone,
+                            );
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                              _loadReceptionists();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.tr('receptionist_created_success')),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            if (dialogCtx.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(parseErrorMessage(e)), backgroundColor: AppColors.danger),
+                              );
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(context.tr('create_account')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _confirmDeleteReceptionist(Map<String, dynamic> receptionist) {
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return AlertDialog(
+          title: Text(context.tr('delete_receptionist')),
+          content: Text('Are you sure you want to delete "${receptionist['name']}"? This action cannot be undone.'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: Text(context.tr('cancel')),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.danger,
+                foregroundColor: Colors.white,
+              ),
+              onPressed: () async {
+                try {
+                  final repo = context.read<DashboardRepository>();
+                  await repo.deleteStaff(receptionist['id'] as int);
+                  if (dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    _loadReceptionists();
+                    ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                      SnackBar(
+                        content: Text(dialogCtx.tr('receptionist_deleted_success')),
+                        backgroundColor: AppColors.success,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (dialogCtx.mounted) {
+                    Navigator.pop(dialogCtx);
+                    ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                      SnackBar(content: Text(parseErrorMessage(e)), backgroundColor: AppColors.danger),
+                    );
+                  }
+                }
+              },
+              child: Text(context.tr('delete')),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final searchQuery = _searchController.text.trim().toLowerCase();
+    final filtered = searchQuery.isEmpty
+        ? _receptionists
+        : _receptionists.where((r) {
+            final name = (r['name'] ?? '').toString().toLowerCase();
+            final email = (r['email'] ?? '').toString().toLowerCase();
+            return name.contains(searchQuery) || email.contains(searchQuery);
+          }).toList();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    context.tr('receptionists'),
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    context.tr('manage_receptionists'),
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  OutlinedButton.icon(
+                    onPressed: _loadReceptionists,
+                    icon: const Icon(Icons.refresh, size: 18),
+                    label: Text(context.tr('refresh')),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: theme.primaryColor,
+                      side: BorderSide(color: theme.primaryColor),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _showAddReceptionistDialog,
+                    icon: const Icon(Icons.person_add),
+                    label: Text(context.tr('add_receptionist')),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: theme.primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Search bar
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: context.tr('search_by_name_email'),
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () => setState(() => _searchController.clear()),
+                        )
+                      : null,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Table
+          Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_isLoading)
+                    const Padding(
+                      padding: EdgeInsets.all(32.0),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_errorMessage != null)
+                    Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Center(
+                        child: Text(_errorMessage!, style: const TextStyle(color: AppColors.danger)),
+                      ),
+                    )
+                  else if (filtered.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Center(child: Text(context.tr('no_receptionists_found'))),
+                    )
+                  else
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: DataTable(
+                        columns: [
+                          DataColumn(label: Text(context.tr('full_name'), style: const TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(context.tr('email'), style: const TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(context.tr('phone'), style: const TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(context.tr('created'), style: const TextStyle(fontWeight: FontWeight.bold))),
+                          DataColumn(label: Text(context.tr('actions'), style: const TextStyle(fontWeight: FontWeight.bold))),
+                        ],
+                        rows: filtered.map((r) {
+                          final profilePictureUrl = r['profile_picture_url'] as String?;
+                          final isDefaultAvatar = profilePictureUrl == null || profilePictureUrl.contains('default-avatar.png');
+
+                          return DataRow(cells: [
+                            DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 16,
+                                    backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
+                                    child: ClipOval(
+                                      child: (!isDefaultAvatar)
+                                          ? Image.network(
+                                              profilePictureUrl,
+                                              width: 32,
+                                              height: 32,
+                                              fit: BoxFit.cover,
+                                              errorBuilder: (ctx, e, st) => Icon(Icons.person, size: 18, color: theme.primaryColor),
+                                            )
+                                          : Icon(Icons.person, size: 18, color: theme.primaryColor),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Text(r['name']?.toString() ?? '', style: const TextStyle(fontWeight: FontWeight.bold)),
+                                ],
+                              ),
+                            ),
+                            DataCell(Text(r['email']?.toString() ?? '')),
+                            DataCell(Text(r['phone']?.toString().isNotEmpty == true ? r['phone'].toString() : '-')),
+                            DataCell(Text(r['created_at']?.toString() ?? '-')),
+                            DataCell(
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                                tooltip: context.tr('delete'),
+                                onPressed: () => _confirmDeleteReceptionist(r),
+                              ),
+                            ),
+                          ]);
+                        }).toList(),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

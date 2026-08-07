@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/l10n/app_translations.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../bloc/dashboard_bloc.dart';
@@ -14,6 +15,7 @@ class ViolationsManagementView extends StatelessWidget {
     final theme = Theme.of(context);
     ViolationReportItem? currentPatient = selectedPatient ?? (patients != null && patients.isNotEmpty ? patients.first : null);
     final amountController = TextEditingController(text: '100.0');
+    bool isDeduct = false;
 
     showDialog(
       context: context,
@@ -21,7 +23,7 @@ class ViolationsManagementView extends StatelessWidget {
         return StatefulBuilder(
           builder: (context, setStateModal) {
             return AlertDialog(
-              title: Text(context.tr('deposit_wallet')),
+              title: Text(isDeduct ? 'Deduct from Patient Wallet' : context.tr('deposit_wallet')),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -54,10 +56,32 @@ class ViolationsManagementView extends StatelessWidget {
                       subtitle: Text(currentPatient!.email),
                     ),
                   const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('Add Funds (+)')),
+                          selected: !isDeduct,
+                          selectedColor: AppColors.success.withValues(alpha: 0.2),
+                          onSelected: (_) => setStateModal(() => isDeduct = false),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ChoiceChip(
+                          label: const Center(child: Text('Deduct (-)')),
+                          selected: isDeduct,
+                          selectedColor: AppColors.danger.withValues(alpha: 0.2),
+                          onSelected: (_) => setStateModal(() => isDeduct = true),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   TextField(
                     controller: amountController,
                     keyboardType: TextInputType.number,
-                    decoration: InputDecoration(labelText: context.tr('deposit_amount')),
+                    decoration: InputDecoration(labelText: isDeduct ? 'Deduction Amount (\$)' : context.tr('deposit_amount')),
                   ),
                 ],
               ),
@@ -68,7 +92,7 @@ class ViolationsManagementView extends StatelessWidget {
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.primaryColor,
+                    backgroundColor: isDeduct ? AppColors.danger : theme.primaryColor,
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () async {
@@ -80,13 +104,19 @@ class ViolationsManagementView extends StatelessWidget {
                       }
 
                       final repo = context.read<DashboardRepository>();
-                      await repo.depositWallet(userId, amount);
+                      if (isDeduct) {
+                        await repo.deductWallet(userId, amount);
+                      } else {
+                        await repo.depositWallet(userId, amount);
+                      }
                       if (dialogContext.mounted) {
                         Navigator.pop(dialogContext);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Deposited \$${amount.toStringAsFixed(2)} to ${currentPatient?.patientName}\'s wallet!'),
-                            backgroundColor: AppColors.success,
+                            content: Text(isDeduct
+                                ? 'Deducted \$${amount.toStringAsFixed(2)} from ${currentPatient?.patientName}\'s wallet!'
+                                : 'Deposited \$${amount.toStringAsFixed(2)} to ${currentPatient?.patientName}\'s wallet!'),
+                            backgroundColor: isDeduct ? AppColors.info : AppColors.success,
                           ),
                         );
                         context.read<DashboardBloc>().add(RefreshDashboard());
@@ -95,14 +125,14 @@ class ViolationsManagementView extends StatelessWidget {
                       if (dialogContext.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('Deposit Failed: ${e.toString()}'),
+                            content: Text(parseErrorMessage(e)),
                             backgroundColor: AppColors.danger,
                           ),
                         );
                       }
                     }
                   },
-                  child: Text(context.tr('deposit')),
+                  child: Text(isDeduct ? 'Deduct Funds' : context.tr('deposit')),
                 ),
               ],
             );
@@ -243,7 +273,7 @@ class ViolationsManagementView extends StatelessWidget {
                                   ElevatedButton.icon(
                                     onPressed: () => _showDepositDialog(context, selectedPatient: v),
                                     icon: const Icon(Icons.add_card, size: 16),
-                                    label: const Text('Deposit'),
+                                    label: Text(context.tr('deposit')),
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: AppColors.success,
                                       foregroundColor: Colors.white,

@@ -25,26 +25,30 @@ class UserModel {
       return null;
     }
 
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      final base = AppConfig.baseUrl.endsWith('/')
-          ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1)
-          : AppConfig.baseUrl;
-      final path = url.startsWith('/') ? url : '/$url';
-      return '$base$path';
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      // Absolute URL — normalise host/port to match AppConfig.baseUrl
+      if (url.contains('localhost') || url.contains('127.0.0.1')) {
+        final baseUri = Uri.parse(AppConfig.baseUrl);
+        final rawUri = Uri.parse(url);
+        final fixedUri = rawUri.replace(
+          scheme: baseUri.scheme,
+          host: baseUri.host,
+          port: baseUri.hasPort ? baseUri.port : null,
+        );
+        return fixedUri.toString();
+      }
+      return url;
     }
 
-    if (url.contains('localhost') || url.contains('127.0.0.1')) {
-      final baseUri = Uri.parse(AppConfig.baseUrl);
-      final rawUri = Uri.parse(url);
-      final fixedUri = rawUri.replace(
-        scheme: baseUri.scheme,
-        host: baseUri.host,
-        port: baseUri.hasPort ? baseUri.port : null,
-      );
-      return fixedUri.toString();
+    // Relative path — prepend base URL + /storage/
+    final base = AppConfig.baseUrl.endsWith('/')
+        ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1)
+        : AppConfig.baseUrl;
+    final cleanPath = url.startsWith('/') ? url.substring(1) : url;
+    if (cleanPath.startsWith('storage/')) {
+      return '$base/$cleanPath';
     }
-
-    return url;
+    return '$base/storage/$cleanPath';
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
