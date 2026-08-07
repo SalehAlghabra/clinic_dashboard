@@ -1,8 +1,11 @@
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/api/api_exceptions.dart';
 import '../../../../core/l10n/app_translations.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../data/models/reports_models.dart';
 import '../../data/repositories/dashboard_repository.dart';
 
 class ReceptionistsManagementView extends StatefulWidget {
@@ -209,6 +212,118 @@ class _ReceptionistsManagementViewState extends State<ReceptionistsManagementVie
     );
   }
 
+  void _showUpdateProfilePictureDialog(Map<String, dynamic> receptionist) {
+    Uint8List? selectedBytes;
+    String? selectedFileName;
+    bool isSubmitting = false;
+    final userId = receptionist['id'] as int? ?? 0;
+    final currentPicUrl = receptionist['profile_picture_url'] as String?;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final primaryColor = Theme.of(context).primaryColor;
+            return AlertDialog(
+              title: Text(context.tr('update_profile_picture')),
+              content: SizedBox(
+                width: 320,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 44,
+                      backgroundColor: primaryColor.withValues(alpha: 0.15),
+                      backgroundImage: selectedBytes != null
+                          ? MemoryImage(selectedBytes!) as ImageProvider
+                          : (currentPicUrl != null ? NetworkImage(currentPicUrl) : null),
+                      child: (selectedBytes == null && currentPicUrl == null)
+                          ? Icon(Icons.person, size: 44, color: primaryColor)
+                          : null,
+                    ),
+                    const SizedBox(height: 16),
+                    OutlinedButton.icon(
+                      onPressed: () async {
+                        final result = await FilePicker.platform.pickFiles(
+                          type: FileType.image,
+                          withData: true,
+                        );
+                        if (result != null && result.files.isNotEmpty) {
+                          final file = result.files.first;
+                          if (file.bytes != null) {
+                            setDialogState(() {
+                              selectedBytes = file.bytes;
+                              selectedFileName = file.name;
+                            });
+                          }
+                        }
+                      },
+                      icon: const Icon(Icons.photo_library_outlined, size: 18),
+                      label: Text(
+                        selectedFileName ?? context.tr('choose_photo_device'),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: primaryColor,
+                        side: BorderSide(color: primaryColor),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text(context.tr('cancel')),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: (isSubmitting || selectedBytes == null)
+                      ? null
+                      : () async {
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final repo = context.read<DashboardRepository>();
+                            await repo.updateStaffProfilePicture(
+                              userId: userId,
+                              fileBytes: selectedBytes!,
+                              fileName: selectedFileName!,
+                            );
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                              _loadReceptionists();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.tr('profile_picture_updated')),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            if (dialogCtx.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(parseErrorMessage(e)), backgroundColor: AppColors.danger),
+                              );
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(context.tr('save_changes')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -229,8 +344,11 @@ class _ReceptionistsManagementViewState extends State<ReceptionistsManagementVie
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 12,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -251,7 +369,9 @@ class _ReceptionistsManagementViewState extends State<ReceptionistsManagementVie
                   ),
                 ],
               ),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
                 children: [
                   OutlinedButton.icon(
                     onPressed: _loadReceptionists,
@@ -262,7 +382,6 @@ class _ReceptionistsManagementViewState extends State<ReceptionistsManagementVie
                       side: BorderSide(color: theme.primaryColor),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: _showAddReceptionistDialog,
                     icon: const Icon(Icons.person_add),
@@ -347,8 +466,7 @@ class _ReceptionistsManagementViewState extends State<ReceptionistsManagementVie
                           DataColumn(label: Text(context.tr('actions'), style: const TextStyle(fontWeight: FontWeight.bold))),
                         ],
                         rows: filtered.map((r) {
-                          final profilePictureUrl = r['profile_picture_url'] as String?;
-                          final isDefaultAvatar = profilePictureUrl == null || profilePictureUrl.contains('default-avatar.png');
+                          final profilePictureUrl = parseProfilePictureUrl(r['profile_picture_url'], r['profile_picture']);
 
                           return DataRow(cells: [
                             DataCell(
@@ -359,7 +477,7 @@ class _ReceptionistsManagementViewState extends State<ReceptionistsManagementVie
                                     radius: 16,
                                     backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
                                     child: ClipOval(
-                                      child: (!isDefaultAvatar)
+                                      child: (profilePictureUrl != null)
                                           ? Image.network(
                                               profilePictureUrl,
                                               width: 32,
@@ -378,13 +496,23 @@ class _ReceptionistsManagementViewState extends State<ReceptionistsManagementVie
                             DataCell(Text(r['email']?.toString() ?? '')),
                             DataCell(Text(r['phone']?.toString().isNotEmpty == true ? r['phone'].toString() : '-')),
                             DataCell(Text(r['created_at']?.toString() ?? '-')),
-                            DataCell(
-                              IconButton(
-                                icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-                                tooltip: context.tr('delete'),
-                                onPressed: () => _confirmDeleteReceptionist(r),
+                             DataCell(
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    icon: Icon(Icons.photo_camera_outlined, color: theme.primaryColor),
+                                    tooltip: context.tr('update_profile_picture'),
+                                    onPressed: () => _showUpdateProfilePictureDialog(r),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.delete_outline, color: AppColors.danger),
+                                    tooltip: context.tr('delete'),
+                                    onPressed: () => _confirmDeleteReceptionist(r),
+                                  ),
+                                ],
                               ),
-                            ),
+                             ),
                           ]);
                         }).toList(),
                       ),

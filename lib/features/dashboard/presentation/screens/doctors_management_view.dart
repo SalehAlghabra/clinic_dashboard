@@ -227,8 +227,11 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 12,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -249,7 +252,9 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                   ),
                 ],
               ),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
                 children: [
                   OutlinedButton.icon(
                     onPressed: _loadDoctors,
@@ -260,8 +265,7 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                       side: BorderSide(color: theme.primaryColor),
                     ),
                   ),
-                  if (!isReceptionist) ...[
-                    const SizedBox(width: 12),
+                  if (!isReceptionist)
                     ElevatedButton.icon(
                       onPressed: () => _showAddDoctorDialog(context),
                       icon: const Icon(Icons.add),
@@ -274,7 +278,6 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                         ),
                       ),
                     ),
-                  ],
                 ],
               ),
             ],

@@ -14,39 +14,35 @@ int _toInt(dynamic value) {
   return 0;
 }
 
-String? _parseProfilePictureUrl(dynamic rawUrl, dynamic rawPath) {
+String? parseProfilePictureUrl(dynamic rawUrl, dynamic rawPath) {
   String? url = rawUrl as String? ?? rawPath as String?;
-  if (url == null || url.isEmpty || url.contains('default-avatar.png')) {
+  if (url == null || url.toString().isEmpty || url.toString().contains('default-avatar.png')) {
     return null;
   }
 
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    // Already absolute — fix host if using localhost/127.0.0.1
-    if (url.contains('localhost') || url.contains('127.0.0.1')) {
-      final baseUri = Uri.parse(AppConfig.baseUrl);
-      final rawUri = Uri.parse(url);
-      final fixedUri = rawUri.replace(
-        scheme: baseUri.scheme,
-        host: baseUri.host,
-        port: baseUri.hasPort ? baseUri.port : null,
-      );
-      return fixedUri.toString();
-    }
-    return url;
-  }
-
-  // Relative path — prepend base URL + /storage/
   final base = AppConfig.baseUrl.endsWith('/')
       ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1)
       : AppConfig.baseUrl;
-  // Remove leading slash if any
-  final cleanPath = url.startsWith('/') ? url.substring(1) : url;
-  // If the path already starts with "storage/", don't double up
-  if (cleanPath.startsWith('storage/')) {
-    return '$base/$cleanPath';
+
+  String relativePath = url.toString();
+  if (relativePath.contains('storage/')) {
+    final idx = relativePath.indexOf('storage/');
+    relativePath = relativePath.substring(idx + 'storage/'.length);
   }
-  return '$base/storage/$cleanPath';
+  if (relativePath.startsWith('/')) {
+    relativePath = relativePath.substring(1);
+  }
+
+  if ((url.toString().startsWith('http://') || url.toString().startsWith('https://')) && !url.toString().contains('storage/')) {
+    return url.toString();
+  }
+
+  return '$base/api/storage/$relativePath';
 }
+
+String? _parseProfilePictureUrl(dynamic rawUrl, dynamic rawPath) =>
+    parseProfilePictureUrl(rawUrl, rawPath);
+
 
 class AppointmentReportItem {
   final int id;
@@ -54,9 +50,11 @@ class AppointmentReportItem {
   final String patientName;
   final String? patientEmail;
   final String? patientPhone;
+  final String? patientProfilePictureUrl;
   final int doctorId;
   final String doctorName;
   final String? specialization;
+  final String? doctorProfilePictureUrl;
   final double consultationFee;
   final double additionalCost;
   final String? additionalNote;
@@ -72,9 +70,11 @@ class AppointmentReportItem {
     required this.patientName,
     this.patientEmail,
     this.patientPhone,
+    this.patientProfilePictureUrl,
     this.doctorId = 0,
     required this.doctorName,
     this.specialization,
+    this.doctorProfilePictureUrl,
     required this.consultationFee,
     required this.additionalCost,
     this.additionalNote,
@@ -92,9 +92,11 @@ class AppointmentReportItem {
       patientName: json['patient_name'] ?? 'Unknown Patient',
       patientEmail: json['patient_email'],
       patientPhone: json['patient_phone'],
+      patientProfilePictureUrl: _parseProfilePictureUrl(json['patient_profile_picture_url'], null),
       doctorId: _toInt(json['doctor_id']),
       doctorName: json['doctor_name'] ?? 'Unknown Doctor',
       specialization: json['specialization'],
+      doctorProfilePictureUrl: _parseProfilePictureUrl(json['doctor_profile_picture_url'], null),
       consultationFee: _toDouble(json['consultation_fee']),
       additionalCost: _toDouble(json['additional_cost']),
       additionalNote: json['additional_note'],
@@ -109,6 +111,7 @@ class AppointmentReportItem {
 
 class DoctorReportItem {
   final int id;
+  final int userId;
   final String doctorName;
   final String? profilePictureUrl;
   final String specialization;
@@ -120,6 +123,7 @@ class DoctorReportItem {
 
   DoctorReportItem({
     required this.id,
+    this.userId = 0,
     required this.doctorName,
     this.profilePictureUrl,
     required this.specialization,
@@ -133,6 +137,7 @@ class DoctorReportItem {
   factory DoctorReportItem.fromJson(Map<String, dynamic> json) {
     return DoctorReportItem(
       id: _toInt(json['id']),
+      userId: _toInt(json['user_id']),
       doctorName: json['doctor_name'] ?? '',
       profilePictureUrl: _parseProfilePictureUrl(json['profile_picture_url'], json['profile_picture']),
       specialization: json['specialization'] ?? '',

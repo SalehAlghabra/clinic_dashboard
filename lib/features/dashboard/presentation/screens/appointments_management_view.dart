@@ -671,8 +671,11 @@ class _AppointmentsManagementViewState extends State<AppointmentsManagementView>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 12,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -693,7 +696,9 @@ class _AppointmentsManagementViewState extends State<AppointmentsManagementView>
                   ),
                 ],
               ),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
                 children: [
                   OutlinedButton.icon(
                     onPressed: _loadAppointments,
@@ -704,7 +709,6 @@ class _AppointmentsManagementViewState extends State<AppointmentsManagementView>
                       side: BorderSide(color: theme.primaryColor),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: _showBookForPatientDialog,
                     icon: const Icon(Icons.add),
@@ -854,7 +858,31 @@ class _AppointmentsManagementViewState extends State<AppointmentsManagementView>
                         final canRescheduleOrCancel = appt.status == 'pending' || (!isReceptionist && appt.status == 'confirmed');
 
                         return DataRow(cells: [
-                          DataCell(Text(appt.patientName, style: const TextStyle(fontWeight: FontWeight.bold))),
+                           DataCell(
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircleAvatar(
+                                  radius: 14,
+                                  backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
+                                  child: ClipOval(
+                                    child: appt.patientProfilePictureUrl != null
+                                        ? Image.network(
+                                            appt.patientProfilePictureUrl!,
+                                            width: 28,
+                                            height: 28,
+                                            fit: BoxFit.cover,
+                                            errorBuilder: (context, error, stackTrace) =>
+                                                Icon(Icons.person, size: 16, color: theme.primaryColor),
+                                          )
+                                        : Icon(Icons.person, size: 16, color: theme.primaryColor),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Text(appt.patientName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                          ),
                           DataCell(Text(appt.doctorName)),
                           DataCell(Text('\$${appt.consultationFee.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))),
                           DataCell(Text('\$${appt.additionalCost.toStringAsFixed(2)}')),

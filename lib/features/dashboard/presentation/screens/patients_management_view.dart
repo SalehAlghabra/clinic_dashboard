@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/api/api_exceptions.dart';
@@ -520,6 +522,8 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
     final phoneController = TextEditingController(text: patient.phone);
     bool isStaffOverride = false;
     bool isSubmitting = false;
+    Uint8List? selectedPhotoBytes;
+    String? selectedPhotoName;
 
     showDialog(
       context: context,
@@ -527,6 +531,7 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final theme = Theme.of(context);
+            final primaryColor = theme.primaryColor;
             final emailChanged = emailController.text.trim().toLowerCase() != patient.email.toLowerCase();
 
             return AlertDialog(
@@ -538,6 +543,51 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Profile picture section
+                      Center(
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 36,
+                              backgroundColor: primaryColor.withValues(alpha: 0.15),
+                              backgroundImage: selectedPhotoBytes != null
+                                  ? MemoryImage(selectedPhotoBytes!) as ImageProvider
+                                  : (patient.profilePictureUrl != null ? NetworkImage(patient.profilePictureUrl!) : null),
+                              child: (selectedPhotoBytes == null && patient.profilePictureUrl == null)
+                                  ? Icon(Icons.person, size: 36, color: primaryColor)
+                                  : null,
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final result = await FilePicker.platform.pickFiles(
+                                  type: FileType.image,
+                                  withData: true,
+                                );
+                                if (result != null && result.files.isNotEmpty) {
+                                  final file = result.files.first;
+                                  if (file.bytes != null) {
+                                    setDialogState(() {
+                                      selectedPhotoBytes = file.bytes;
+                                      selectedPhotoName = file.name;
+                                    });
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.photo_camera_outlined, size: 16),
+                              label: Text(
+                                selectedPhotoName ?? context.tr('choose_photo_device'),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: primaryColor,
+                                side: BorderSide(color: primaryColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
                       TextField(
                         controller: nameController,
                         decoration: InputDecoration(labelText: context.tr('patient_name')),
@@ -578,7 +628,7 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: theme.primaryColor,
+                    backgroundColor: primaryColor,
                     foregroundColor: Colors.white,
                   ),
                   onPressed: isSubmitting
@@ -592,6 +642,16 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
                           setDialogState(() => isSubmitting = true);
                           try {
                             final repo = context.read<DashboardRepository>();
+
+                            // Upload profile picture first if selected
+                            if (selectedPhotoBytes != null && selectedPhotoName != null) {
+                              await repo.updatePatientProfilePicture(
+                                patientId: patient.id,
+                                fileBytes: selectedPhotoBytes!,
+                                fileName: selectedPhotoName!,
+                              );
+                            }
+
                             final res = await repo.updatePatient(
                               id: patient.id,
                               name: name,
@@ -670,9 +730,11 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
               ),
             ],
           ),
-          content: SizedBox(
-            width: 500,
-            height: 400,
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: 500,
+              maxHeight: MediaQuery.of(context).size.height * 0.75,
+            ),
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: context.read<DashboardRepository>().fetchPatientTransactions(patient.id),
               builder: (ctx, snapshot) {
@@ -781,8 +843,11 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header Row
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 16,
+            runSpacing: 12,
             children: [
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -802,7 +867,9 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
                   ),
                 ],
               ),
-              Row(
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
                 children: [
                   OutlinedButton.icon(
                     onPressed: () => _loadPatients(),
@@ -814,7 +881,6 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     ),
                   ),
-                  const SizedBox(width: 12),
                   ElevatedButton.icon(
                     onPressed: _showRegisterPatientDialog,
                     icon: const Icon(Icons.person_add),

@@ -161,8 +161,11 @@ class ViolationsManagementView extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 16,
+                  runSpacing: 12,
                   children: [
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -184,6 +187,7 @@ class ViolationsManagementView extends StatelessWidget {
                       ],
                     ),
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         OutlinedButton.icon(
                           onPressed: () => context.read<DashboardBloc>().add(RefreshDashboard()),
@@ -249,7 +253,31 @@ class ViolationsManagementView extends StatelessWidget {
                             ],
                             rows: violations.map((v) {
                               return DataRow(cells: [
-                                DataCell(Text(v.patientName, style: const TextStyle(fontWeight: FontWeight.bold))),
+                                DataCell(
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      CircleAvatar(
+                                        radius: 14,
+                                        backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
+                                        child: ClipOval(
+                                          child: v.profilePictureUrl != null
+                                              ? Image.network(
+                                                  v.profilePictureUrl!,
+                                                  width: 28,
+                                                  height: 28,
+                                                  fit: BoxFit.cover,
+                                                  errorBuilder: (ctx, e, st) =>
+                                                      Icon(Icons.person, size: 16, color: theme.primaryColor),
+                                                )
+                                              : Icon(Icons.person, size: 16, color: theme.primaryColor),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(v.patientName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                                    ],
+                                  ),
+                                ),
                                 DataCell(Text(v.email)),
                                 DataCell(
                                   Container(

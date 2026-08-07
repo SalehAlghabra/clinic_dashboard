@@ -21,34 +21,28 @@ class UserModel {
 
   static String? _parseProfilePictureUrl(dynamic rawUrl, dynamic rawPath) {
     String? url = rawUrl as String? ?? rawPath as String?;
-    if (url == null || url.isEmpty || url.contains('default-avatar.png')) {
+    if (url == null || url.toString().isEmpty || url.toString().contains('default-avatar.png')) {
       return null;
     }
 
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      // Absolute URL — normalise host/port to match AppConfig.baseUrl
-      if (url.contains('localhost') || url.contains('127.0.0.1')) {
-        final baseUri = Uri.parse(AppConfig.baseUrl);
-        final rawUri = Uri.parse(url);
-        final fixedUri = rawUri.replace(
-          scheme: baseUri.scheme,
-          host: baseUri.host,
-          port: baseUri.hasPort ? baseUri.port : null,
-        );
-        return fixedUri.toString();
-      }
-      return url;
-    }
-
-    // Relative path — prepend base URL + /storage/
     final base = AppConfig.baseUrl.endsWith('/')
         ? AppConfig.baseUrl.substring(0, AppConfig.baseUrl.length - 1)
         : AppConfig.baseUrl;
-    final cleanPath = url.startsWith('/') ? url.substring(1) : url;
-    if (cleanPath.startsWith('storage/')) {
-      return '$base/$cleanPath';
+
+    String relativePath = url.toString();
+    if (relativePath.contains('storage/')) {
+      final idx = relativePath.indexOf('storage/');
+      relativePath = relativePath.substring(idx + 'storage/'.length);
     }
-    return '$base/storage/$cleanPath';
+    if (relativePath.startsWith('/')) {
+      relativePath = relativePath.substring(1);
+    }
+
+    if ((url.toString().startsWith('http://') || url.toString().startsWith('https://')) && !url.toString().contains('storage/')) {
+      return url.toString();
+    }
+
+    return '$base/api/storage/$relativePath';
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {

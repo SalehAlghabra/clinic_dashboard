@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/l10n/app_translations.dart';
@@ -28,6 +30,11 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
   String? _errorMessage;
 
   List<DoctorSchedule> _schedules = [];
+
+  // Profile picture upload state
+  Uint8List? _selectedPhotoBytes;
+  String? _selectedPhotoName;
+  bool _isUploadingPhoto = false;
 
   // Add Schedule Controllers
   String _selectedDay = 'monday';
@@ -158,6 +165,44 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
     }
   }
 
+  Future<void> _uploadDoctorPhoto() async {
+    final repo = context.read<DashboardRepository>();
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.image,
+      withData: true,
+    );
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.first;
+    if (file.bytes == null) return;
+
+    setState(() {
+      _selectedPhotoBytes = file.bytes;
+      _selectedPhotoName = file.name;
+      _isUploadingPhoto = true;
+    });
+
+    try {
+      await repo.updateStaffProfilePicture(
+        userId: widget.doctor.userId,
+        fileBytes: _selectedPhotoBytes!,
+        fileName: _selectedPhotoName!,
+      );
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(context.tr('profile_picture_updated')), backgroundColor: AppColors.success),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isUploadingPhoto = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -167,10 +212,36 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
     return AlertDialog(
       title: Row(
         children: [
-          CircleAvatar(
-            backgroundColor: primaryColor.withValues(alpha: 0.15),
-            backgroundImage: widget.doctor.profilePictureUrl != null ? NetworkImage(widget.doctor.profilePictureUrl!) : null,
-            child: widget.doctor.profilePictureUrl == null ? Icon(Icons.person, color: primaryColor) : null,
+          Stack(
+            children: [
+              CircleAvatar(
+                radius: 28,
+                backgroundColor: primaryColor.withValues(alpha: 0.15),
+                backgroundImage: _selectedPhotoBytes != null
+                    ? MemoryImage(_selectedPhotoBytes!) as ImageProvider
+                    : (widget.doctor.profilePictureUrl != null
+                        ? NetworkImage(widget.doctor.profilePictureUrl!)
+                        : null),
+                child: (_selectedPhotoBytes == null && widget.doctor.profilePictureUrl == null)
+                    ? Icon(Icons.person, size: 28, color: primaryColor)
+                    : null,
+              ),
+              if (!widget.isReadOnly)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: GestureDetector(
+                    onTap: _isUploadingPhoto ? null : _uploadDoctorPhoto,
+                    child: CircleAvatar(
+                      radius: 11,
+                      backgroundColor: primaryColor,
+                      child: _isUploadingPhoto
+                          ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                    ),
+                  ),
+                ),
+            ],
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -184,9 +255,11 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
           ),
         ],
       ),
-      content: SizedBox(
-        width: 650,
-        height: 520,
+      content: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: 650,
+          maxHeight: MediaQuery.of(context).size.height * 0.8,
+        ),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

@@ -327,23 +327,26 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               child: Icon(Icons.local_hospital, color: primaryColor),
             ),
             const SizedBox(width: 12),
-            Text(
-              context.tr('app_title'),
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
+            Flexible(
+              child: Text(
+                context.tr('app_title'),
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
-            if (userRole == 'receptionist') ...[
-              const SizedBox(width: 12),
+            if (userRole == 'receptionist' && isWide) ...[
+              const SizedBox(width: 8),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: AppColors.info.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Text(
                   'RECEPTIONIST',
-                  style: TextStyle(color: AppColors.info, fontSize: 11, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppColors.info, fontSize: 10, fontWeight: FontWeight.bold),
                 ),
               ),
             ],
@@ -355,8 +358,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             tooltip: context.tr('edit_profile'),
             onPressed: () => _showProfileDialog(context),
           ),
-          const SizedBox(width: 4),
-
           IconButton(
             icon: Icon(Icons.palette_outlined, color: primaryColor),
             tooltip: context.tr('theme_color'),
@@ -364,20 +365,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ThemeColorPickerDialog.show(context);
             },
           ),
-          const SizedBox(width: 4),
-
-          TextButton.icon(
-            onPressed: () {
-              context.read<LanguageCubit>().toggleLanguage();
-            },
-            icon: Icon(Icons.language, size: 18, color: primaryColor),
-            label: Text(
-              context.tr('switch_language'),
-              style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
+          if (isWide)
+            TextButton.icon(
+              onPressed: () {
+                context.read<LanguageCubit>().toggleLanguage();
+              },
+              icon: Icon(Icons.language, size: 18, color: primaryColor),
+              label: Text(
+                context.tr('switch_language'),
+                style: TextStyle(fontWeight: FontWeight.bold, color: primaryColor),
+              ),
+            )
+          else
+            IconButton(
+              icon: Icon(Icons.language, color: primaryColor),
+              tooltip: context.tr('switch_language'),
+              onPressed: () {
+                context.read<LanguageCubit>().toggleLanguage();
+              },
             ),
-          ),
-          const SizedBox(width: 4),
-
           IconButton(
             icon: Icon(
               isDark ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
@@ -387,8 +393,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               context.read<ThemeCubit>().toggleTheme();
             },
           ),
-          const SizedBox(width: 4),
-
           IconButton(
             icon: const Icon(Icons.logout, color: AppColors.danger),
             tooltip: context.tr('logout'),
@@ -396,7 +400,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               context.read<AuthBloc>().add(LogoutRequested());
             },
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 8),
         ],
       ),
       body: Row(

@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/api/api_client.dart';
 import '../../../../core/api/api_endpoints.dart';
@@ -349,5 +350,37 @@ class DashboardRepository {
 
   Future<void> deleteStaff(int staffId) async {
     await _apiClient.delete('/api/staff/$staffId');
+  }
+
+  /// Upload a profile picture for a patient (admin or receptionist).
+  Future<String?> updatePatientProfilePicture({
+    required int patientId,
+    required List<int> fileBytes,
+    required String fileName,
+  }) async {
+    final formData = FormData.fromMap({
+      'profile_picture': MultipartFile.fromBytes(fileBytes, filename: fileName),
+    });
+    final response = await _apiClient.post(
+      '/api/patients/$patientId/profile-picture',
+      data: formData,
+    );
+    return response.data['profile_picture_url'] as String?;
+  }
+
+  /// Upload a profile picture for a doctor or receptionist (admin only).
+  Future<String?> updateStaffProfilePicture({
+    required int userId,
+    required List<int> fileBytes,
+    required String fileName,
+  }) async {
+    final formData = FormData.fromMap({
+      'profile_picture': MultipartFile.fromBytes(fileBytes, filename: fileName),
+    });
+    final response = await _apiClient.post(
+      '/api/staff/$userId/profile-picture',
+      data: formData,
+    );
+    return response.data['profile_picture_url'] as String?;
   }
 }
