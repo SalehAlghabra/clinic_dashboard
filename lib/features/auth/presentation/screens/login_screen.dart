@@ -283,8 +283,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       Center(
                         child: ConstrainedBox(
                           constraints: const BoxConstraints(
-                            maxHeight: 100,
-                            maxWidth: 240,
+                            maxHeight: 130,
+                            maxWidth: 280,
                           ),
                           child: Image.asset(
                             'assets/images/logo.png',

@@ -730,11 +730,9 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
               ),
             ],
           ),
-          content: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxWidth: 500,
-              maxHeight: MediaQuery.of(context).size.height * 0.75,
-            ),
+          content: SizedBox(
+            width: 500,
+            height: MediaQuery.of(context).size.height * 0.65,
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: context.read<DashboardRepository>().fetchPatientTransactions(patient.id),
               builder: (ctx, snapshot) {
@@ -791,6 +789,11 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
                                         ? rawAmt.toDouble()
                                         : double.tryParse(rawAmt.toString()) ?? 0.0);
 
+                                final rawDate = (tx['created_at'] ?? '').toString();
+                                final formattedDate = rawDate.contains('T')
+                                    ? rawDate.split('T').first
+                                    : (rawDate.length >= 10 ? rawDate.substring(0, 10) : rawDate);
+
                                 return Card(
                                   margin: const EdgeInsets.symmetric(vertical: 4),
                                   color: isDark ? AppColors.darkSurface : Colors.grey.shade50,
@@ -808,7 +811,7 @@ class _PatientsManagementViewState extends State<PatientsManagementView> {
                                     ),
                                     subtitle: Text(tx['description'] ?? tx['type'] ?? ''),
                                     trailing: Text(
-                                      (tx['created_at'] ?? '').toString().split('T').first,
+                                      formattedDate,
                                       style: const TextStyle(fontSize: 12),
                                     ),
                                   ),

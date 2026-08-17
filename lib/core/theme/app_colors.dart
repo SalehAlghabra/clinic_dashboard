@@ -15,8 +15,8 @@ class AppColors {
   static const Color purple = Color(0xFF8B5CF6);
 
   // Light Theme Colors
-  static const Color lightBg = Color(0xFFF4F7F6);
-  static const Color lightSurface = Colors.white;
+  static const Color lightBg = Color(0xFFEDF2F1);
+  static const Color lightSurface = Color(0xFFFAFBFB);
   static const Color lightTextPrimary = Color(0xFF1E293B);
   static const Color lightTextSecondary = Color(0xFF64748B);
   static const Color lightBorder = Color(0xFFE2E8F0);

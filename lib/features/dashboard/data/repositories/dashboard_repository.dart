@@ -131,11 +131,17 @@ class DashboardRepository {
   }
 
   Future<void> updateDoctor(int doctorId, {
+    String? name,
+    String? email,
+    String? phone,
     String? specialization,
     double? consultationFee,
     String? bio,
   }) async {
     final data = <String, dynamic>{};
+    if (name != null) data['name'] = name;
+    if (email != null) data['email'] = email;
+    if (phone != null) data['phone'] = phone;
     if (specialization != null) data['specialization'] = specialization;
     if (consultationFee != null) data['consultation_fee'] = consultationFee;
     if (bio != null) data['bio'] = bio;
@@ -310,9 +316,19 @@ class DashboardRepository {
   }
 
   Future<List<Map<String, dynamic>>> fetchPatientTransactions(int patientId) async {
-    final response = await _apiClient.get('/api/wallet/transactions/$patientId');
-    final List data = response.data['data'] ?? (response.data is List ? response.data : []);
-    return List<Map<String, dynamic>>.from(data);
+    try {
+      final response = await _apiClient.get('/api/wallet/transactions/$patientId');
+      final resData = response.data;
+      List data = [];
+      if (resData is Map && resData['data'] is List) {
+        data = resData['data'];
+      } else if (resData is List) {
+        data = resData;
+      }
+      return data.map((e) => e is Map ? Map<String, dynamic>.from(e) : <String, dynamic>{}).toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<List<String>> fetchAvailableSlots(int doctorId, String date) async {
@@ -382,5 +398,24 @@ class DashboardRepository {
       data: formData,
     );
     return response.data['profile_picture_url'] as String?;
+  }
+
+  /// Update staff details (admin only).
+  Future<void> updateStaff({
+    required int id,
+    required String name,
+    required String email,
+    required String phone,
+    bool staffOverride = false,
+  }) async {
+    await _apiClient.put(
+      '/api/staff/$id',
+      data: {
+        'name': name,
+        'email': email,
+        'phone': phone,
+        if (staffOverride) 'staff_override': true,
+      },
+    );
   }
 }

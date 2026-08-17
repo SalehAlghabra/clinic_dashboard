@@ -113,6 +113,9 @@ class DoctorReportItem {
   final int id;
   final int userId;
   final String doctorName;
+  final String? email;
+  final String? phone;
+  final String? bio;
   final String? profilePictureUrl;
   final String specialization;
   final double consultationFee;
@@ -125,6 +128,9 @@ class DoctorReportItem {
     required this.id,
     this.userId = 0,
     required this.doctorName,
+    this.email,
+    this.phone,
+    this.bio,
     this.profilePictureUrl,
     required this.specialization,
     required this.consultationFee,
@@ -139,6 +145,9 @@ class DoctorReportItem {
       id: _toInt(json['id']),
       userId: _toInt(json['user_id']),
       doctorName: json['doctor_name'] ?? '',
+      email: json['email'],
+      phone: json['phone'],
+      bio: json['bio'],
       profilePictureUrl: _parseProfilePictureUrl(json['profile_picture_url'], json['profile_picture']),
       specialization: json['specialization'] ?? '',
       consultationFee: _toDouble(json['consultation_fee']),

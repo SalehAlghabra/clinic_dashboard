@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/l10n/app_translations.dart';
@@ -164,6 +166,192 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
     );
   }
 
+  void _showEditDoctorDialog(DoctorReportItem doctor) {
+    final nameController = TextEditingController(text: doctor.doctorName);
+    final emailController = TextEditingController(text: doctor.email ?? '');
+    final phoneController = TextEditingController(text: doctor.phone ?? '');
+    final specController = TextEditingController(text: doctor.specialization);
+    final feeController = TextEditingController(text: doctor.consultationFee.toStringAsFixed(2));
+    final bioController = TextEditingController(text: doctor.bio ?? '');
+
+    Uint8List? selectedPhotoBytes;
+    String? selectedPhotoName;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final primaryColor = Theme.of(context).primaryColor;
+            final currentPicUrl = doctor.profilePictureUrl;
+
+            return AlertDialog(
+              title: Text(context.tr('edit_doctor')),
+              content: SizedBox(
+                width: 460,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Profile picture section
+                      Center(
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 36,
+                              backgroundColor: primaryColor.withValues(alpha: 0.15),
+                              backgroundImage: selectedPhotoBytes != null
+                                  ? MemoryImage(selectedPhotoBytes!) as ImageProvider
+                                  : (currentPicUrl != null && currentPicUrl.isNotEmpty ? NetworkImage(currentPicUrl) : null),
+                              child: (selectedPhotoBytes == null && (currentPicUrl == null || currentPicUrl.isEmpty))
+                                  ? Icon(Icons.person, size: 36, color: primaryColor)
+                                  : null,
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final result = await FilePicker.platform.pickFiles(
+                                  type: FileType.image,
+                                  withData: true,
+                                );
+                                if (result != null && result.files.isNotEmpty) {
+                                  final file = result.files.first;
+                                  if (file.bytes != null) {
+                                    setDialogState(() {
+                                      selectedPhotoBytes = file.bytes;
+                                      selectedPhotoName = file.name;
+                                    });
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.photo_camera_outlined, size: 16),
+                              label: Text(
+                                selectedPhotoName ?? context.tr('choose_photo_device'),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: primaryColor,
+                                side: BorderSide(color: primaryColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(labelText: context.tr('doctor_name')),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(labelText: context.tr('email')),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(labelText: context.tr('phone')),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: specController,
+                        decoration: InputDecoration(labelText: context.tr('specialization')),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: feeController,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        decoration: InputDecoration(labelText: context.tr('consultation_fee')),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: bioController,
+                        decoration: InputDecoration(labelText: context.tr('bio')),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text(context.tr('cancel')),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final name = nameController.text.trim();
+                          final email = emailController.text.trim();
+                          final phone = phoneController.text.trim();
+                          final spec = specController.text.trim();
+                          final fee = double.tryParse(feeController.text.trim()) ?? doctor.consultationFee;
+                          final bio = bioController.text.trim();
+
+                          if (name.isEmpty || email.isEmpty || spec.isEmpty) return;
+
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final repo = context.read<DashboardRepository>();
+
+                            if (selectedPhotoBytes != null && selectedPhotoName != null && doctor.userId > 0) {
+                              await repo.updateStaffProfilePicture(
+                                userId: doctor.userId,
+                                fileBytes: selectedPhotoBytes!,
+                                fileName: selectedPhotoName!,
+                              );
+                            }
+
+                            await repo.updateDoctor(
+                              doctor.id,
+                              name: name,
+                              email: email,
+                              phone: phone,
+                              specialization: spec,
+                              consultationFee: fee,
+                              bio: bio,
+                            );
+
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                              _loadDoctors();
+                              context.read<DashboardBloc>().add(RefreshDashboard());
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.tr('profile_updated_success')),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            if (dialogCtx.mounted) {
+                              ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                SnackBar(content: Text(e.toString().replaceAll('ApiException: ', '')), backgroundColor: AppColors.danger),
+                              );
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(context.tr('save_changes')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _confirmDeleteDoctor(BuildContext context, DoctorReportItem doctor) {
     showDialog(
       context: context,
@@ -219,6 +407,7 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
         ? _doctors
         : _doctors.where((doc) {
             return doc.doctorName.toLowerCase().contains(searchQuery) ||
+                (doc.email != null && doc.email!.toLowerCase().contains(searchQuery)) ||
                 doc.specialization.toLowerCase().contains(searchQuery);
           }).toList();
 
@@ -349,6 +538,7 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                     child: DataTable(
                       columns: [
                         DataColumn(label: Text(context.tr('doctor_name'))),
+                        DataColumn(label: Text(context.tr('email'))),
                         DataColumn(label: Text(context.tr('specialization'))),
                         DataColumn(label: Text(context.tr('consultation_fee'))),
                         DataColumn(label: Text(context.tr('total_appointments'))),
@@ -384,6 +574,7 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                               ],
                             ),
                           ),
+                          DataCell(Text(doc.email ?? '-')),
                           DataCell(Text(doc.specialization)),
                           DataCell(Text('\$${doc.consultationFee.toStringAsFixed(2)}',
                               style: const TextStyle(fontWeight: FontWeight.bold))),
@@ -401,8 +592,8 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                               children: [
                                 OutlinedButton.icon(
                                   onPressed: () => DoctorDetailsModal.show(context, doc, isReadOnly: isReceptionist),
-                                  icon: const Icon(Icons.edit_calendar, size: 16),
-                                  label: Text(context.tr('schedule_and_details')),
+                                  icon: const Icon(Icons.calendar_month_outlined, size: 16),
+                                  label: Text(context.tr('working_schedule')),
                                   style: OutlinedButton.styleFrom(
                                     foregroundColor: theme.primaryColor,
                                     side: BorderSide(color: theme.primaryColor),
@@ -411,8 +602,13 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                                 if (!isReceptionist) ...[
                                   const SizedBox(width: 8),
                                   IconButton(
+                                    icon: Icon(Icons.edit_outlined, color: theme.primaryColor),
+                                    tooltip: context.tr('edit_doctor'),
+                                    onPressed: () => _showEditDoctorDialog(doc),
+                                  ),
+                                  IconButton(
                                     icon: const Icon(Icons.delete_outline, color: AppColors.danger),
-                                    tooltip: 'Delete Doctor',
+                                    tooltip: context.tr('delete_doctor'),
                                     onPressed: () => _confirmDeleteDoctor(context, doc),
                                   ),
                                 ],

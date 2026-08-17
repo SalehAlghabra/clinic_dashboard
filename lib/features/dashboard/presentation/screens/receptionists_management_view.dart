@@ -212,6 +212,186 @@ class _ReceptionistsManagementViewState extends State<ReceptionistsManagementVie
     );
   }
 
+  void _showEditReceptionistDialog(Map<String, dynamic> receptionist) {
+    final id = receptionist['id'] as int? ?? 0;
+    final initialName = (receptionist['name'] ?? '').toString();
+    final initialEmail = (receptionist['email'] ?? '').toString();
+    final initialPhone = (receptionist['phone'] ?? '').toString();
+    final currentPicUrl = parseProfilePictureUrl(receptionist['profile_picture_url'], receptionist['profile_picture']);
+
+    final nameController = TextEditingController(text: initialName);
+    final emailController = TextEditingController(text: initialEmail);
+    final phoneController = TextEditingController(text: initialPhone);
+
+    Uint8List? selectedPhotoBytes;
+    String? selectedPhotoName;
+    bool isStaffOverride = false;
+    bool isSubmitting = false;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final primaryColor = Theme.of(context).primaryColor;
+            final emailChanged = emailController.text.trim().toLowerCase() != initialEmail.toLowerCase();
+
+            return AlertDialog(
+              title: Text(context.tr('edit_receptionist')),
+              content: SizedBox(
+                width: 440,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Profile picture section
+                      Center(
+                        child: Column(
+                          children: [
+                            CircleAvatar(
+                              radius: 36,
+                              backgroundColor: primaryColor.withValues(alpha: 0.15),
+                              backgroundImage: selectedPhotoBytes != null
+                                  ? MemoryImage(selectedPhotoBytes!) as ImageProvider
+                                  : (currentPicUrl != null ? NetworkImage(currentPicUrl) : null),
+                              child: (selectedPhotoBytes == null && currentPicUrl == null)
+                                  ? Icon(Icons.person, size: 36, color: primaryColor)
+                                  : null,
+                            ),
+                            const SizedBox(height: 8),
+                            OutlinedButton.icon(
+                              onPressed: () async {
+                                final result = await FilePicker.platform.pickFiles(
+                                  type: FileType.image,
+                                  withData: true,
+                                );
+                                if (result != null && result.files.isNotEmpty) {
+                                  final file = result.files.first;
+                                  if (file.bytes != null) {
+                                    setDialogState(() {
+                                      selectedPhotoBytes = file.bytes;
+                                      selectedPhotoName = file.name;
+                                    });
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.photo_camera_outlined, size: 16),
+                              label: Text(
+                                selectedPhotoName ?? context.tr('choose_photo_device'),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: primaryColor,
+                                side: BorderSide(color: primaryColor),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: nameController,
+                        decoration: InputDecoration(labelText: context.tr('full_name')),
+                      ),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emailController,
+                        onChanged: (_) => setDialogState(() {}),
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(labelText: context.tr('email')),
+                      ),
+                      if (emailChanged) ...[
+                        const SizedBox(height: 8),
+                        CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            context.tr('staff_override_notice'),
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                          value: isStaffOverride,
+                          onChanged: (val) => setDialogState(() => isStaffOverride = val ?? false),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(labelText: context.tr('phone')),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogCtx),
+                  child: Text(context.tr('cancel')),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: isSubmitting
+                      ? null
+                      : () async {
+                          final name = nameController.text.trim();
+                          final newEmail = emailController.text.trim();
+                          final phone = phoneController.text.trim();
+
+                          if (name.isEmpty || newEmail.isEmpty) return;
+                          setDialogState(() => isSubmitting = true);
+                          try {
+                            final repo = context.read<DashboardRepository>();
+
+                            if (selectedPhotoBytes != null && selectedPhotoName != null) {
+                              await repo.updateStaffProfilePicture(
+                                userId: id,
+                                fileBytes: selectedPhotoBytes!,
+                                fileName: selectedPhotoName!,
+                              );
+                            }
+
+                            await repo.updateStaff(
+                              id: id,
+                              name: name,
+                              email: newEmail,
+                              phone: phone,
+                              staffOverride: isStaffOverride,
+                            );
+
+                            if (dialogCtx.mounted) {
+                              Navigator.pop(dialogCtx);
+                              _loadReceptionists();
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(context.tr('receptionist_updated_success')),
+                                  backgroundColor: AppColors.success,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            setDialogState(() => isSubmitting = false);
+                            if (dialogCtx.mounted) {
+                              ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                SnackBar(content: Text(parseErrorMessage(e)), backgroundColor: AppColors.danger),
+                              );
+                            }
+                          }
+                        },
+                  child: isSubmitting
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
+                      : Text(context.tr('save_changes')),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   void _showUpdateProfilePictureDialog(Map<String, dynamic> receptionist) {
     Uint8List? selectedBytes;
     String? selectedFileName;
@@ -500,6 +680,11 @@ class _ReceptionistsManagementViewState extends State<ReceptionistsManagementVie
                               Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, color: AppColors.info),
+                                    tooltip: context.tr('edit_receptionist'),
+                                    onPressed: () => _showEditReceptionistDialog(r),
+                                  ),
                                   IconButton(
                                     icon: Icon(Icons.photo_camera_outlined, color: theme.primaryColor),
                                     tooltip: context.tr('update_profile_picture'),

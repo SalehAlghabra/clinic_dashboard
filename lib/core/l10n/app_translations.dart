@@ -117,7 +117,10 @@ class AppTranslations {
       'verify_and_save': 'Verify & Save Email',
       'save_changes': 'Save Changes',
 
-      // Doctor Deletion & File Picker
+      // Doctor Editing, Deletion & File Picker
+      'edit_doctor': 'Edit Doctor Info',
+      'email': 'Email Address',
+      'profile_picture_updated': 'Profile picture updated successfully!',
       'delete_doctor': 'Delete Doctor',
       'delete_doctor_confirm': 'Are you sure you want to delete this doctor? This action cannot be undone.',
       'delete': 'Delete',
@@ -164,7 +167,9 @@ class AppTranslations {
       'no_transactions': 'No transaction logs available.',
       // Receptionist feedback
       'receptionist_created_success': 'Receptionist account created successfully!',
+      'receptionist_updated_success': 'Receptionist details updated successfully.',
       'receptionist_deleted_success': 'Receptionist deleted successfully.',
+      'edit_receptionist': 'Edit Receptionist',
       'delete_receptionist': 'Delete Receptionist',
       'no_receptionists_found': 'No receptionist accounts found.',
       'search_by_name_email': 'Search by name or email...',
@@ -298,7 +303,10 @@ class AppTranslations {
       'verify_and_save': 'تأكيد وحفظ البريد الإلكتروني',
       'save_changes': 'حفظ التغييرات',
 
-      // Doctor Deletion & File Picker
+      // Doctor Editing, Deletion & File Picker
+      'edit_doctor': 'تعديل بيانات الطبيب',
+      'email': 'البريد الإلكتروني',
+      'profile_picture_updated': 'تم تحديث الصورة الشخصية بنجاح!',
       'delete_doctor': 'حذف حساب الطبيب',
       'delete_doctor_confirm': 'هل أنت تأكيد من رغبتك في حذف هذا الطبيب؟ لا يمكن التراجع عن هذا الإجراء.',
       'delete': 'حذف',
@@ -345,7 +353,9 @@ class AppTranslations {
       'no_transactions': 'لا توجد معاملات مسجلة.',
       // Receptionist feedback
       'receptionist_created_success': 'تم إنشاء حساب موظف الاستقبال بنجاح!',
+      'receptionist_updated_success': 'تم تحديث بيانات موظف الاستقبال بنجاح.',
       'receptionist_deleted_success': 'تم حذف موظف الاستقبال بنجاح.',
+      'edit_receptionist': 'تعديل بيانات موظف الاستقبال',
       'delete_receptionist': 'حذف موظف الاستقبال',
       'no_receptionists_found': 'لا توجد حسابات موظفي استقبال.',
       'search_by_name_email': 'البحث بالاسم أو البريد الإلكتروني...',

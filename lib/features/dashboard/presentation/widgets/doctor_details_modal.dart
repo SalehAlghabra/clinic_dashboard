@@ -1,5 +1,3 @@
-import 'dart:typed_data';
-import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/l10n/app_translations.dart';
@@ -28,23 +26,13 @@ class DoctorDetailsModal extends StatefulWidget {
 class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
   bool _isLoading = true;
   String? _errorMessage;
-
   List<DoctorSchedule> _schedules = [];
-
-  // Profile picture upload state
-  Uint8List? _selectedPhotoBytes;
-  String? _selectedPhotoName;
-  bool _isUploadingPhoto = false;
 
   // Add Schedule Controllers
   String _selectedDay = 'monday';
   final _startTimeController = TextEditingController(text: '09:00');
   final _endTimeController = TextEditingController(text: '17:00');
   final _durationController = TextEditingController(text: '30');
-
-  // Edit Doctor Controllers
-  late TextEditingController _feeController;
-  late TextEditingController _specController;
 
   final List<String> _days = [
     'monday',
@@ -59,8 +47,6 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
   @override
   void initState() {
     super.initState();
-    _feeController = TextEditingController(text: widget.doctor.consultationFee.toStringAsFixed(2));
-    _specController = TextEditingController(text: widget.doctor.specialization);
     _loadData();
   }
 
@@ -69,16 +55,20 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
     _startTimeController.dispose();
     _endTimeController.dispose();
     _durationController.dispose();
-    _feeController.dispose();
-    _specController.dispose();
     super.dispose();
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+  Future<void> _loadData({bool showLoading = true}) async {
+    if (showLoading) {
+      setState(() {
+        _isLoading = true;
+        _errorMessage = null;
+      });
+    } else {
+      setState(() {
+        _errorMessage = null;
+      });
+    }
 
     try {
       final repo = context.read<DashboardRepository>();
@@ -100,29 +90,6 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
     }
   }
 
-  Future<void> _updateDoctorInfo() async {
-    try {
-      final repo = context.read<DashboardRepository>();
-      final fee = double.tryParse(_feeController.text.trim()) ?? widget.doctor.consultationFee;
-      await repo.updateDoctor(
-        widget.doctor.id,
-        specialization: _specController.text.trim(),
-        consultationFee: fee,
-      );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Doctor details updated!'), backgroundColor: AppColors.success),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error updating: ${e.toString()}'), backgroundColor: AppColors.danger),
-        );
-      }
-    }
-  }
-
   Future<void> _addSchedule() async {
     final start = _startTimeController.text.trim();
     final end = _endTimeController.text.trim();
@@ -135,7 +102,7 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Schedule added successfully!'), backgroundColor: AppColors.success),
         );
-        _loadData();
+        _loadData(showLoading: false);
       }
     } catch (e) {
       if (mounted) {
@@ -154,48 +121,10 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Schedule removed.'), backgroundColor: AppColors.info),
         );
-        _loadData();
+        _loadData(showLoading: false);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.danger),
-        );
-      }
-    }
-  }
-
-  Future<void> _uploadDoctorPhoto() async {
-    final repo = context.read<DashboardRepository>();
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.image,
-      withData: true,
-    );
-    if (result == null || result.files.isEmpty) return;
-    final file = result.files.first;
-    if (file.bytes == null) return;
-
-    setState(() {
-      _selectedPhotoBytes = file.bytes;
-      _selectedPhotoName = file.name;
-      _isUploadingPhoto = true;
-    });
-
-    try {
-      await repo.updateStaffProfilePicture(
-        userId: widget.doctor.userId,
-        fileBytes: _selectedPhotoBytes!,
-        fileName: _selectedPhotoName!,
-      );
-      if (mounted) {
-        setState(() => _isUploadingPhoto = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(context.tr('profile_picture_updated')), backgroundColor: AppColors.success),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() => _isUploadingPhoto = false);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error: ${e.toString()}'), backgroundColor: AppColors.danger),
         );
@@ -212,36 +141,15 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
     return AlertDialog(
       title: Row(
         children: [
-          Stack(
-            children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: primaryColor.withValues(alpha: 0.15),
-                backgroundImage: _selectedPhotoBytes != null
-                    ? MemoryImage(_selectedPhotoBytes!) as ImageProvider
-                    : (widget.doctor.profilePictureUrl != null
-                        ? NetworkImage(widget.doctor.profilePictureUrl!)
-                        : null),
-                child: (_selectedPhotoBytes == null && widget.doctor.profilePictureUrl == null)
-                    ? Icon(Icons.person, size: 28, color: primaryColor)
-                    : null,
-              ),
-              if (!widget.isReadOnly)
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: GestureDetector(
-                    onTap: _isUploadingPhoto ? null : _uploadDoctorPhoto,
-                    child: CircleAvatar(
-                      radius: 11,
-                      backgroundColor: primaryColor,
-                      child: _isUploadingPhoto
-                          ? const SizedBox(width: 12, height: 12, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                          : const Icon(Icons.camera_alt, size: 12, color: Colors.white),
-                    ),
-                  ),
-                ),
-            ],
+          CircleAvatar(
+            radius: 24,
+            backgroundColor: primaryColor.withValues(alpha: 0.15),
+            backgroundImage: (widget.doctor.profilePictureUrl != null && widget.doctor.profilePictureUrl!.isNotEmpty)
+                ? NetworkImage(widget.doctor.profilePictureUrl!)
+                : null,
+            child: (widget.doctor.profilePictureUrl == null || widget.doctor.profilePictureUrl!.isEmpty)
+                ? Icon(Icons.person, size: 24, color: primaryColor)
+                : null,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -258,46 +166,12 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
       content: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: 650,
-          maxHeight: MediaQuery.of(context).size.height * 0.8,
+          maxHeight: MediaQuery.of(context).size.height * 0.75,
         ),
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Doctor Edit Details Section
-              Text(context.tr('schedule_and_details'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _specController,
-                      readOnly: widget.isReadOnly,
-                      decoration: InputDecoration(labelText: context.tr('specialization')),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: TextField(
-                      controller: _feeController,
-                      readOnly: widget.isReadOnly,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: InputDecoration(labelText: context.tr('consultation_fee')),
-                    ),
-                  ),
-                  if (!widget.isReadOnly) ...[
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: _updateDoctorInfo,
-                      style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: Colors.white),
-                      child: Text(context.tr('save_changes')),
-                    ),
-                  ],
-                ],
-              ),
-              const Divider(height: 32),
-
-              // Doctor Working Schedule Section
               Text(context.tr('working_schedule'), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               const SizedBox(height: 8),
               _isLoading
@@ -313,12 +187,8 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
                                 child: Text(context.tr('no_schedule_configured'), style: const TextStyle(fontStyle: FontStyle.italic)),
                               )
                             else
-                              ListView.builder(
-                                shrinkWrap: true,
-                                physics: const NeverScrollableScrollPhysics(),
-                                itemCount: _schedules.length,
-                                itemBuilder: (context, index) {
-                                  final sch = _schedules[index];
+                              Column(
+                                children: _schedules.map((sch) {
                                   return Card(
                                     color: isDark ? AppColors.darkSurface : Colors.grey.shade50,
                                     margin: const EdgeInsets.symmetric(vertical: 4),
@@ -334,7 +204,7 @@ class _DoctorDetailsModalState extends State<DoctorDetailsModal> {
                                             ),
                                     ),
                                   );
-                                },
+                                }).toList(),
                               ),
                             if (!widget.isReadOnly) ...[
                               const SizedBox(height: 16),
