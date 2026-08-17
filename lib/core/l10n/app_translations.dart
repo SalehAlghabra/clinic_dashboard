@@ -4,6 +4,7 @@ class AppTranslations {
   static final Map<String, Map<String, String>> _localizedValues = {
     'en': {
       'app_title': 'Clinic Management System',
+      'welcome_back': 'Welcome Back',
       'dashboard': 'Dashboard',
       'overview': 'Overview',
       'doctors': 'Doctors',
@@ -184,6 +185,7 @@ class AppTranslations {
     },
     'ar': {
       'app_title': 'نظام إدارة العيادات الطبية',
+      'welcome_back': 'مرحبا بعودتك',
       'dashboard': 'لوحة التحكّم',
       'overview': 'نظرة عامة',
       'doctors': 'الأطباء',

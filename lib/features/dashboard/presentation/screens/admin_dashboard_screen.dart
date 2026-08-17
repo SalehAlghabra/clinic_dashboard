@@ -318,14 +318,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       appBar: AppBar(
         title: Row(
           children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: primaryColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
+            SizedBox(
+              height: 32,
+              child: Image.asset(
+                'assets/images/logo.png',
+                fit: BoxFit.contain,
               ),
-              child: Icon(Icons.local_hospital, color: primaryColor),
             ),
+
             const SizedBox(width: 12),
             Flexible(
               child: Text(
