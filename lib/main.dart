@@ -66,7 +66,7 @@ class MyApp extends StatelessWidget {
             return BlocBuilder<LanguageCubit, Locale>(
               builder: (context, locale) {
                 return MaterialApp(
-                  title: 'Clinic Management Dashboard',
+                  title: 'Clinova',
                   debugShowCheckedModeBanner: false,
                   theme: AppTheme.lightTheme(themeState.primaryColor),
                   darkTheme: AppTheme.darkTheme(themeState.primaryColor),

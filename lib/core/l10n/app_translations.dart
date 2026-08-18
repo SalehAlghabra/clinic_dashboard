@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 class AppTranslations {
   static final Map<String, Map<String, String>> _localizedValues = {
     'en': {
-      'app_title': 'Clinic Management System',
+      'app_title': 'Clinova',
       'welcome_back': 'Welcome Back',
       'dashboard': 'Dashboard',
       'overview': 'Overview',
@@ -189,7 +189,7 @@ class AppTranslations {
       'error_occurred': 'An error occurred. Please try again.',
     },
     'ar': {
-      'app_title': 'نظام إدارة العيادات الطبية',
+      'app_title': 'Clinova',
       'welcome_back': 'مرحبا بعودتك',
       'dashboard': 'لوحة التحكّم',
       'overview': 'نظرة عامة',
