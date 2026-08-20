@@ -128,6 +128,7 @@ class AuthRepository {
     String? profilePicture,
     List<int>? fileBytes,
     String? fileName,
+    bool removeProfilePicture = false,
   }) async {
     final map = <String, dynamic>{};
     if (name != null && name.isNotEmpty) map['name'] = name;
@@ -137,7 +138,9 @@ class AuthRepository {
       map['password_confirmation'] = password;
       if (currentPassword != null) map['current_password'] = currentPassword;
     }
-    if (fileBytes != null && fileName != null) {
+    if (removeProfilePicture) {
+      map['remove_profile_picture'] = 1;
+    } else if (fileBytes != null && fileName != null) {
       map['profile_picture'] = dio.MultipartFile.fromBytes(fileBytes, filename: fileName);
     } else if (profilePicture != null && profilePicture.isNotEmpty) {
       map['profile_picture'] = profilePicture;

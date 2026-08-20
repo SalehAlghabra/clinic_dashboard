@@ -55,6 +55,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     Uint8List? selectedBytes;
     String? selectedFileName;
+    bool removePicture = false;
     bool isSubmitting = false;
 
     showDialog(
@@ -63,6 +64,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return StatefulBuilder(
           builder: (context, setDialogState) {
             final primaryColor = Theme.of(context).primaryColor;
+            final hasPictureNow = !removePicture && (selectedBytes != null || (currentUser?.profilePictureUrl != null && currentUser!.profilePictureUrl!.isNotEmpty));
 
             return AlertDialog(
               title: Text(context.tr('edit_profile')),
@@ -72,21 +74,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircleAvatar(
-                        radius: 40,
-                        backgroundColor: primaryColor.withValues(alpha: 0.15),
-                        backgroundImage: selectedBytes != null
-                            ? MemoryImage(selectedBytes!)
-                            : (currentUser?.profilePictureUrl != null
-                                ? NetworkImage(currentUser!.profilePictureUrl!) as ImageProvider
-                                : null),
-                        child: (selectedBytes == null && currentUser?.profilePictureUrl == null)
-                            ? Icon(Icons.person, size: 40, color: primaryColor)
-                            : null,
-                      ),
-                      const SizedBox(height: 12),
-                      OutlinedButton.icon(
-                        onPressed: () async {
+                      GestureDetector(
+                        onTap: () async {
                           final result = await FilePicker.platform.pickFiles(
                             type: FileType.image,
                             withData: true,
@@ -95,23 +84,132 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                             final file = result.files.first;
                             if (file.bytes != null) {
                               setDialogState(() {
+                                removePicture = false;
                                 selectedBytes = file.bytes;
                                 selectedFileName = file.name;
                               });
                             }
                           }
                         },
-                        icon: const Icon(Icons.photo_library_outlined, size: 18),
-                        label: Text(
-                          selectedFileName != null ? selectedFileName! : context.tr('choose_photo_device'),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: primaryColor,
-                          side: BorderSide(color: primaryColor),
+                        child: Stack(
+                          alignment: Alignment.center,
+                          children: [
+                            CircleAvatar(
+                              radius: 40,
+                              backgroundColor: primaryColor.withValues(alpha: 0.15),
+                              backgroundImage: !removePicture
+                                  ? (selectedBytes != null
+                                      ? MemoryImage(selectedBytes!)
+                                      : (currentUser?.profilePictureUrl != null
+                                          ? NetworkImage(currentUser!.profilePictureUrl!) as ImageProvider
+                                          : null))
+                                  : null,
+                              child: (!hasPictureNow)
+                                  ? Icon(Icons.person, size: 40, color: primaryColor)
+                                  : null,
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Container(
+                                padding: const EdgeInsets.all(5),
+                                decoration: BoxDecoration(
+                                  color: primaryColor,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
+                                ),
+                                child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 14),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
+                      const SizedBox(height: 10),
+                      Wrap(
+                        alignment: WrapAlignment.center,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 6,
+                        children: [
+                          OutlinedButton.icon(
+                            onPressed: () async {
+                              final result = await FilePicker.platform.pickFiles(
+                                type: FileType.image,
+                                withData: true,
+                              );
+                              if (result != null && result.files.isNotEmpty) {
+                                final file = result.files.first;
+                                if (file.bytes != null) {
+                                  setDialogState(() {
+                                    removePicture = false;
+                                    selectedBytes = file.bytes;
+                                    selectedFileName = file.name;
+                                  });
+                                }
+                              }
+                            },
+                            icon: const Icon(Icons.photo_library_outlined, size: 16),
+                            label: Text(
+                              context.tr('choose_photo'),
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: primaryColor,
+                              side: BorderSide(color: primaryColor),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            ),
+                          ),
+                          if (hasPictureNow)
+                            TextButton.icon(
+                              onPressed: () {
+                                setDialogState(() {
+                                  removePicture = true;
+                                  selectedBytes = null;
+                                  selectedFileName = null;
+                                });
+                              },
+                              icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
+                              label: Text(
+                                context.tr('remove_photo'),
+                                style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                              ),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.danger,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              ),
+                            ),
+                        ],
+                      ),
+                      if (selectedFileName != null && !removePicture) ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: primaryColor.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            selectedFileName!,
+                            style: TextStyle(fontSize: 11, color: primaryColor, fontWeight: FontWeight.w500),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 16),
+                      TextField(
+                        controller: TextEditingController(text: currentUser?.email ?? ''),
+                        readOnly: true,
+                        enabled: false,
+                        decoration: InputDecoration(
+                          labelText: context.tr('email_address'),
+                          prefixIcon: const Icon(Icons.email_outlined),
+                          suffixIcon: const Icon(Icons.verified_outlined, color: Colors.green, size: 18),
+                          filled: true,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: nameController,
                         decoration: InputDecoration(
@@ -211,6 +309,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                               password: pass.isNotEmpty ? pass : null,
                               fileBytes: selectedBytes,
                               fileName: selectedFileName,
+                              removeProfilePicture: removePicture,
                             );
 
                             if (dialogCtx.mounted) {
@@ -353,10 +452,48 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ],
         ),
         actions: [
-          IconButton(
-            icon: Icon(Icons.person_outline, color: primaryColor),
-            tooltip: context.tr('edit_profile'),
-            onPressed: () => _showProfileDialog(context),
+          InkWell(
+            onTap: () => _showProfileDialog(context),
+            borderRadius: BorderRadius.circular(20),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: primaryColor.withValues(alpha: 0.15),
+                    backgroundImage: (authState is Authenticated &&
+                            authState.user.profilePictureUrl != null &&
+                            authState.user.profilePictureUrl!.isNotEmpty)
+                        ? NetworkImage(authState.user.profilePictureUrl!) as ImageProvider
+                        : null,
+                    child: (authState is! Authenticated ||
+                            authState.user.profilePictureUrl == null ||
+                            authState.user.profilePictureUrl!.isEmpty)
+                        ? Icon(Icons.person, size: 18, color: primaryColor)
+                        : null,
+                  ),
+                  if (isWide && authState is Authenticated) ...[
+                    const SizedBox(width: 8),
+                    Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          authState.user.name,
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        ),
+                        Text(
+                          authState.user.role.toUpperCase(),
+                          style: TextStyle(fontSize: 10, color: theme.textTheme.bodySmall?.color),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ),
           IconButton(
             icon: Icon(Icons.palette_outlined, color: primaryColor),

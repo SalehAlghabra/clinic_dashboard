@@ -176,6 +176,7 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
 
     Uint8List? selectedPhotoBytes;
     String? selectedPhotoName;
+    bool removePhoto = false;
     bool isSubmitting = false;
 
     showDialog(
@@ -185,6 +186,7 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
           builder: (context, setDialogState) {
             final primaryColor = Theme.of(context).primaryColor;
             final currentPicUrl = doctor.profilePictureUrl;
+            final hasPictureNow = !removePhoto && (selectedPhotoBytes != null || (currentPicUrl != null && currentPicUrl.isNotEmpty));
 
             return AlertDialog(
               title: Text(context.tr('edit_doctor')),
@@ -199,19 +201,8 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                       Center(
                         child: Column(
                           children: [
-                            CircleAvatar(
-                              radius: 36,
-                              backgroundColor: primaryColor.withValues(alpha: 0.15),
-                              backgroundImage: selectedPhotoBytes != null
-                                  ? MemoryImage(selectedPhotoBytes!) as ImageProvider
-                                  : (currentPicUrl != null && currentPicUrl.isNotEmpty ? NetworkImage(currentPicUrl) : null),
-                              child: (selectedPhotoBytes == null && (currentPicUrl == null || currentPicUrl.isEmpty))
-                                  ? Icon(Icons.person, size: 36, color: primaryColor)
-                                  : null,
-                            ),
-                            const SizedBox(height: 8),
-                            OutlinedButton.icon(
-                              onPressed: () async {
+                            GestureDetector(
+                              onTap: () async {
                                 final result = await FilePicker.platform.pickFiles(
                                   type: FileType.image,
                                   withData: true,
@@ -220,22 +211,116 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                                   final file = result.files.first;
                                   if (file.bytes != null) {
                                     setDialogState(() {
+                                      removePhoto = false;
                                       selectedPhotoBytes = file.bytes;
                                       selectedPhotoName = file.name;
                                     });
                                   }
                                 }
                               },
-                              icon: const Icon(Icons.photo_camera_outlined, size: 16),
-                              label: Text(
-                                selectedPhotoName ?? context.tr('choose_photo_device'),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: primaryColor,
-                                side: BorderSide(color: primaryColor),
+                              child: Stack(
+                                alignment: Alignment.center,
+                                children: [
+                                  CircleAvatar(
+                                    radius: 36,
+                                    backgroundColor: primaryColor.withValues(alpha: 0.15),
+                                    backgroundImage: !removePhoto
+                                        ? (selectedPhotoBytes != null
+                                            ? MemoryImage(selectedPhotoBytes!) as ImageProvider
+                                            : (currentPicUrl != null && currentPicUrl.isNotEmpty ? NetworkImage(currentPicUrl) : null))
+                                        : null,
+                                    child: (!hasPictureNow)
+                                        ? Icon(Icons.person, size: 36, color: primaryColor)
+                                        : null,
+                                  ),
+                                  Positioned(
+                                    bottom: 0,
+                                    right: 0,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: BoxDecoration(
+                                        color: primaryColor,
+                                        shape: BoxShape.circle,
+                                        border: Border.all(color: Theme.of(context).colorScheme.surface, width: 2),
+                                      ),
+                                      child: const Icon(Icons.camera_alt_rounded, color: Colors.white, size: 12),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              alignment: WrapAlignment.center,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              spacing: 8,
+                              runSpacing: 4,
+                              children: [
+                                OutlinedButton.icon(
+                                  onPressed: () async {
+                                    final result = await FilePicker.platform.pickFiles(
+                                      type: FileType.image,
+                                      withData: true,
+                                    );
+                                    if (result != null && result.files.isNotEmpty) {
+                                      final file = result.files.first;
+                                      if (file.bytes != null) {
+                                        setDialogState(() {
+                                          removePhoto = false;
+                                          selectedPhotoBytes = file.bytes;
+                                          selectedPhotoName = file.name;
+                                        });
+                                      }
+                                    }
+                                  },
+                                  icon: const Icon(Icons.photo_camera_outlined, size: 16),
+                                  label: Text(
+                                    context.tr('choose_photo'),
+                                    style: const TextStyle(fontSize: 12),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: primaryColor,
+                                    side: BorderSide(color: primaryColor),
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                  ),
+                                ),
+                                if (hasPictureNow)
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        removePhoto = true;
+                                        selectedPhotoBytes = null;
+                                        selectedPhotoName = null;
+                                      });
+                                    },
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 16, color: AppColors.danger),
+                                    label: Text(
+                                      context.tr('remove_photo'),
+                                      style: const TextStyle(color: AppColors.danger, fontSize: 12),
+                                    ),
+                                    style: TextButton.styleFrom(
+                                      foregroundColor: AppColors.danger,
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            if (selectedPhotoName != null && !removePhoto) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: primaryColor.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  selectedPhotoName!,
+                                  style: TextStyle(fontSize: 11, color: primaryColor),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -302,7 +387,9 @@ class _DoctorsManagementViewState extends State<DoctorsManagementView> {
                           try {
                             final repo = context.read<DashboardRepository>();
 
-                            if (selectedPhotoBytes != null && selectedPhotoName != null && doctor.userId > 0) {
+                            if (removePhoto && doctor.userId > 0) {
+                              await repo.removeStaffProfilePicture(userId: doctor.userId);
+                            } else if (selectedPhotoBytes != null && selectedPhotoName != null && doctor.userId > 0) {
                               await repo.updateStaffProfilePicture(
                                 userId: doctor.userId,
                                 fileBytes: selectedPhotoBytes!,

@@ -384,6 +384,14 @@ class DashboardRepository {
     return response.data['profile_picture_url'] as String?;
   }
 
+  /// Remove profile picture for a patient (admin or receptionist).
+  Future<void> removePatientProfilePicture({required int patientId}) async {
+    await _apiClient.post(
+      '/api/patients/$patientId/profile-picture',
+      data: {'remove_profile_picture': 1},
+    );
+  }
+
   /// Upload a profile picture for a doctor or receptionist (admin only).
   Future<String?> updateStaffProfilePicture({
     required int userId,
@@ -398,6 +406,14 @@ class DashboardRepository {
       data: formData,
     );
     return response.data['profile_picture_url'] as String?;
+  }
+
+  /// Remove profile picture for a doctor or receptionist (admin only).
+  Future<void> removeStaffProfilePicture({required int userId}) async {
+    await _apiClient.post(
+      '/api/staff/$userId/profile-picture',
+      data: {'remove_profile_picture': 1},
+    );
   }
 
   /// Update staff details (admin only).

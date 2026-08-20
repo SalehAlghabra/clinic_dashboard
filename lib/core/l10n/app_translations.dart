@@ -146,7 +146,9 @@ class AppTranslations {
       'passwords_do_not_match': 'New password and confirmation do not match.',
       // Receptionist management
       'receptionists': 'Receptionists',
-      'manage_receptionists': 'Manage receptionist accounts',
+      'remove_photo': 'Remove Photo',
+      'choose_photo': 'Choose Photo',
+      'email_address': 'Email Address',
       'add_receptionist': 'Add Receptionist',
       'create_account': 'Create Account',
       'full_name': 'Full Name',
@@ -331,8 +333,9 @@ class AppTranslations {
       'login_button': 'تسجيل الدخول',
       'passwords_do_not_match': 'كلمة المرور الجديدة والتأكيد غير متطابقين.',
       // Receptionist management
-      'receptionists': 'موظفو الاستقبال',
-      'manage_receptionists': 'إدارة حسابات الاستقبال',
+      'remove_photo': 'حذف الصورة',
+      'choose_photo': 'اختيار صورة',
+      'email_address': 'البريد الإلكتروني',
       'add_receptionist': 'إضافة موظف استقبال',
       'create_account': 'إنشاء الحساب',
       'full_name': 'الاسم الكامل',
