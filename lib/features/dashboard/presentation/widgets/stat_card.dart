@@ -8,6 +8,7 @@ class StatCard extends StatelessWidget {
   final IconData icon;
   final Color accentColor;
   final Widget? badge;
+  final VoidCallback? onTap;
 
   const StatCard({
     super.key,
@@ -17,6 +18,7 @@ class StatCard extends StatelessWidget {
     this.accentColor = AppColors.tealPrimary,
     this.subtitle,
     this.badge,
+    this.onTap,
   });
 
   @override
@@ -24,7 +26,7 @@ class StatCard extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
+    Widget cardContent = Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: isDark ? AppColors.darkSurface : Colors.white,
@@ -109,5 +111,21 @@ class StatCard extends StatelessWidget {
         ],
       ),
     );
+
+    if (onTap != null) {
+      return Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          hoverColor: accentColor.withValues(alpha: 0.04),
+          splashColor: accentColor.withValues(alpha: 0.1),
+          child: cardContent,
+        ),
+      );
+    }
+
+    return cardContent;
   }
 }

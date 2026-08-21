@@ -62,6 +62,6 @@ class StorageService {
   }
 
   Future<String> getLocale() async {
-    return (await readString(_localeKey)) ?? 'ar';
+    return (await readString(_localeKey)) ?? 'en';
   }
 }

@@ -7,9 +7,15 @@ import '../bloc/dashboard_bloc.dart';
 import '../bloc/dashboard_events_states.dart';
 import '../../data/repositories/dashboard_repository.dart';
 import '../../data/models/reports_models.dart';
+import '../../data/models/financial_transaction_model.dart';
 
 class InvoicesManagementView extends StatefulWidget {
-  const InvoicesManagementView({super.key});
+  final String initialTab;
+
+  const InvoicesManagementView({
+    super.key,
+    this.initialTab = 'billing_queue',
+  });
 
   @override
   State<InvoicesManagementView> createState() => _InvoicesManagementViewState();
@@ -17,16 +23,62 @@ class InvoicesManagementView extends StatefulWidget {
 
 class _InvoicesManagementViewState extends State<InvoicesManagementView> {
   final TextEditingController _searchController = TextEditingController();
-  bool _isBillingQueueOnly = true;
+  late String _activeTab; // 'billing_queue', 'all_invoices', 'financial_history'
+  String _selectedHistoryType = 'all'; // 'all', 'deposit', 'consultation', 'penalty', 'refund'
 
   List<InvoiceReportItem> _invoices = [];
   bool _isLoadingInvoices = true;
   String? _errorMsg;
 
+  List<FinancialTransactionModel> _historyTransactions = [];
+  bool _isLoadingHistory = false;
+  String? _historyErrorMsg;
+
   @override
   void initState() {
     super.initState();
-    _loadInvoices();
+    _activeTab = widget.initialTab;
+    if (_activeTab == 'financial_history') {
+      _loadHistory();
+    } else {
+      _loadInvoices();
+    }
+  }
+
+  void _loadCurrentView() {
+    if (_activeTab == 'financial_history') {
+      _loadHistory();
+    } else {
+      _loadInvoices();
+    }
+  }
+
+  Future<void> _loadHistory() async {
+    setState(() {
+      _isLoadingHistory = true;
+      _historyErrorMsg = null;
+    });
+
+    try {
+      final repo = context.read<DashboardRepository>();
+      final list = await repo.fetchFinancialHistory(
+        type: _selectedHistoryType,
+        search: _searchController.text.trim(),
+      );
+      if (mounted) {
+        setState(() {
+          _historyTransactions = list;
+          _isLoadingHistory = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _historyErrorMsg = e.toString().replaceAll('ApiException: ', '');
+          _isLoadingHistory = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadInvoices() async {
@@ -38,7 +90,7 @@ class _InvoicesManagementViewState extends State<InvoicesManagementView> {
     try {
       final repo = context.read<DashboardRepository>();
       final list = await repo.fetchInvoices(
-        billingQueue: _isBillingQueueOnly,
+        billingQueue: _activeTab == 'billing_queue',
         search: _searchController.text.trim(),
       );
       if (mounted) {
@@ -332,10 +384,214 @@ class _InvoicesManagementViewState extends State<InvoicesManagementView> {
     );
   }
 
+  Widget _buildTypeBadge(FinancialTransactionModel tx) {
+    Color bg;
+    Color fg;
+    IconData icon;
+    String label;
+
+    switch (tx.type) {
+      case 'deposit':
+        bg = AppColors.tealPrimary.withValues(alpha: 0.12);
+        fg = AppColors.tealPrimary;
+        icon = Icons.account_balance_wallet_rounded;
+        label = context.tr('type_deposit');
+        break;
+      case 'booking_deduct':
+        bg = AppColors.success.withValues(alpha: 0.12);
+        fg = AppColors.success;
+        icon = Icons.medical_services_rounded;
+        label = context.tr('type_consultation');
+        break;
+      case 'penalty':
+        bg = AppColors.warning.withValues(alpha: 0.12);
+        fg = Colors.orange.shade800;
+        icon = Icons.warning_amber_rounded;
+        label = context.tr('type_penalty');
+        break;
+      case 'refund_full':
+      case 'refund_partial':
+        bg = AppColors.danger.withValues(alpha: 0.12);
+        fg = AppColors.danger;
+        icon = Icons.replay_rounded;
+        label = context.tr('type_refund');
+        break;
+      default:
+        bg = Colors.grey.withValues(alpha: 0.12);
+        fg = Colors.grey.shade700;
+        icon = Icons.receipt_long_rounded;
+        label = tx.type.toUpperCase();
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: fg.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: fg),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(color: fg, fontWeight: FontWeight.bold, fontSize: 12),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTransactionDetailsDialog(FinancialTransactionModel tx) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(Icons.receipt_long_rounded, color: theme.primaryColor, size: 24),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${context.tr('financial_history')} #${tx.id}',
+                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: 480,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: (tx.type.startsWith('refund') || tx.type == 'deduct')
+                          ? AppColors.danger.withValues(alpha: 0.08)
+                          : AppColors.success.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          (tx.type.startsWith('refund') || tx.type == 'deduct')
+                              ? '-\$${tx.amount.toStringAsFixed(2)}'
+                              : '+\$${tx.amount.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.bold,
+                            color: (tx.type.startsWith('refund') || tx.type == 'deduct')
+                                ? AppColors.danger
+                                : AppColors.success,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        _buildTypeBadge(tx),
+                      ],
+                    ),
+                  ),
+                ),
+                const Divider(height: 28),
+                _buildDetailRow(context.tr('created'), tx.createdAt ?? 'N/A'),
+                _buildDetailRow(context.tr('patient_name'), tx.patientName),
+                if (tx.patientPhone != null && tx.patientPhone!.isNotEmpty)
+                  _buildDetailRow(context.tr('phone'), tx.patientPhone!),
+                if (tx.doctorName != null && tx.doctorName!.isNotEmpty)
+                  _buildDetailRow(context.tr('doctor_name'), tx.doctorName!),
+                if (tx.appointmentId != null)
+                  _buildDetailRow(context.tr('reference'), 'Appointment #${tx.appointmentId}'),
+                _buildDetailRow(
+                  context.tr('description'),
+                  tx.description ?? 'No description provided.',
+                ),
+                const Divider(height: 24),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: isDark ? Colors.black26 : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Balance: \$${tx.balanceBefore.toStringAsFixed(2)}',
+                        style: TextStyle(color: theme.hintColor, fontSize: 13),
+                      ),
+                      const Icon(Icons.arrow_forward_rounded, size: 14),
+                      Text(
+                        'New Balance: \$${tx.balanceAfter.toStringAsFixed(2)}',
+                        style: TextStyle(fontWeight: FontWeight.bold, color: theme.primaryColor, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: theme.primaryColor,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(context.tr('close')),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6.0),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 130,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+
+    String headerTitle = context.tr('invoices');
+    String headerDesc = context.tr('revenue_overview_desc');
+
+    if (_activeTab == 'billing_queue') {
+      headerTitle = context.tr('billing_queue');
+    } else if (_activeTab == 'financial_history') {
+      headerTitle = context.tr('financial_history');
+      headerDesc = context.tr('financial_history_desc');
+    }
 
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24.0),
@@ -352,7 +608,7 @@ class _InvoicesManagementViewState extends State<InvoicesManagementView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _isBillingQueueOnly ? context.tr('billing_queue') : context.tr('invoices'),
+                    headerTitle,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: isDark ? AppColors.darkTextPrimary : AppColors.lightTextPrimary,
@@ -360,7 +616,7 @@ class _InvoicesManagementViewState extends State<InvoicesManagementView> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    context.tr('revenue_overview_desc'),
+                    headerDesc,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: isDark ? AppColors.darkTextSecondary : AppColors.lightTextSecondary,
                     ),
@@ -368,7 +624,7 @@ class _InvoicesManagementViewState extends State<InvoicesManagementView> {
                 ],
               ),
               OutlinedButton.icon(
-                onPressed: _loadInvoices,
+                onPressed: _loadCurrentView,
                 icon: const Icon(Icons.refresh, size: 18),
                 label: Text(context.tr('refresh')),
                 style: OutlinedButton.styleFrom(
@@ -380,7 +636,7 @@ class _InvoicesManagementViewState extends State<InvoicesManagementView> {
           ),
           const SizedBox(height: 24),
 
-          // Search & Tab Toggle Bar
+          // Search & 3-Tab Toggle Bar
           Card(
             elevation: 0,
             shape: RoundedRectangleBorder(
@@ -390,47 +646,127 @@ class _InvoicesManagementViewState extends State<InvoicesManagementView> {
             child: Padding(
               padding: const EdgeInsets.all(16.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      ChoiceChip(
-                        selected: _isBillingQueueOnly,
-                        label: Text(context.tr('billing_queue')),
-                        avatar: const Icon(Icons.queue, size: 16),
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() => _isBillingQueueOnly = true);
-                            _loadInvoices();
-                          }
-                        },
-                      ),
-                      const SizedBox(width: 12),
-                      ChoiceChip(
-                        selected: !_isBillingQueueOnly,
-                        label: Text(context.tr('all_invoices')),
-                        avatar: const Icon(Icons.receipt, size: 16),
-                        onSelected: (selected) {
-                          if (selected) {
-                            setState(() => _isBillingQueueOnly = false);
-                            _loadInvoices();
-                          }
-                        },
-                      ),
-                    ],
+                  // Main Navigation Segment Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        ChoiceChip(
+                          selected: _activeTab == 'billing_queue',
+                          label: Text(context.tr('billing_queue')),
+                          avatar: const Icon(Icons.queue, size: 16),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() => _activeTab = 'billing_queue');
+                              _loadInvoices();
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        ChoiceChip(
+                          selected: _activeTab == 'all_invoices',
+                          label: Text(context.tr('all_invoices')),
+                          avatar: const Icon(Icons.receipt, size: 16),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() => _activeTab = 'all_invoices');
+                              _loadInvoices();
+                            }
+                          },
+                        ),
+                        const SizedBox(width: 10),
+                        ChoiceChip(
+                          selected: _activeTab == 'financial_history',
+                          label: Text(context.tr('financial_history')),
+                          avatar: const Icon(Icons.history_edu_rounded, size: 16),
+                          onSelected: (selected) {
+                            if (selected) {
+                              setState(() => _activeTab = 'financial_history');
+                              _loadHistory();
+                            }
+                          },
+                        ),
+                      ],
+                    ),
                   ),
+
+                  // If Financial History tab is active, show category filter pills
+                  if (_activeTab == 'financial_history') ...[
+                    const SizedBox(height: 12),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          FilterChip(
+                            selected: _selectedHistoryType == 'all',
+                            label: Text(context.tr('all_types')),
+                            onSelected: (_) {
+                              setState(() => _selectedHistoryType = 'all');
+                              _loadHistory();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          FilterChip(
+                            selected: _selectedHistoryType == 'consultation',
+                            label: Text(context.tr('type_consultation')),
+                            avatar: const Icon(Icons.medical_services_rounded, size: 14, color: AppColors.success),
+                            onSelected: (_) {
+                              setState(() => _selectedHistoryType = 'consultation');
+                              _loadHistory();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          FilterChip(
+                            selected: _selectedHistoryType == 'deposit',
+                            label: Text(context.tr('type_deposit')),
+                            avatar: const Icon(Icons.account_balance_wallet_rounded, size: 14, color: AppColors.tealPrimary),
+                            onSelected: (_) {
+                              setState(() => _selectedHistoryType = 'deposit');
+                              _loadHistory();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          FilterChip(
+                            selected: _selectedHistoryType == 'penalty',
+                            label: Text(context.tr('type_penalty')),
+                            avatar: const Icon(Icons.warning_amber_rounded, size: 14, color: Colors.orange),
+                            onSelected: (_) {
+                              setState(() => _selectedHistoryType = 'penalty');
+                              _loadHistory();
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                          FilterChip(
+                            selected: _selectedHistoryType == 'refund',
+                            label: Text(context.tr('type_refund')),
+                            avatar: const Icon(Icons.replay_rounded, size: 14, color: AppColors.danger),
+                            onSelected: (_) {
+                              setState(() => _selectedHistoryType = 'refund');
+                              _loadHistory();
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+
                   const SizedBox(height: 12),
                   TextField(
                     controller: _searchController,
-                    onChanged: (val) => _loadInvoices(),
+                    onChanged: (val) => _loadCurrentView(),
                     decoration: InputDecoration(
-                      hintText: context.tr('search_patients'),
+                      hintText: _activeTab == 'financial_history'
+                          ? context.tr('search_financial_history')
+                          : context.tr('search_patients'),
                       prefixIcon: const Icon(Icons.search),
                       suffixIcon: _searchController.text.isNotEmpty
                           ? IconButton(
                               icon: const Icon(Icons.clear),
                               onPressed: () {
                                 _searchController.clear();
-                                _loadInvoices();
+                                _loadCurrentView();
                               },
                             )
                           : null,
@@ -442,7 +778,7 @@ class _InvoicesManagementViewState extends State<InvoicesManagementView> {
           ),
           const SizedBox(height: 24),
 
-          // Invoices Table Section
+          // Main Table Content
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -450,103 +786,264 @@ class _InvoicesManagementViewState extends State<InvoicesManagementView> {
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: isDark ? AppColors.darkBorder : AppColors.lightBorder),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (_isLoadingInvoices)
-                  const Center(child: CircularProgressIndicator(color: AppColors.tealPrimary))
-                else if (_errorMsg != null)
-                  Center(child: Text(_errorMsg!, style: const TextStyle(color: AppColors.danger)))
-                else if (_invoices.isEmpty)
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(_isBillingQueueOnly ? 'No completed visits waiting for payment.' : 'No invoices found.'),
-                  )
-                else
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: DataTable(
-                      columns: [
-                        DataColumn(label: Text(context.tr('patient_name'))),
-                        DataColumn(label: Text(context.tr('doctor_name'))),
-                        DataColumn(label: Text(context.tr('consultation_fee'))),
-                        DataColumn(label: Text(context.tr('additional_cost'))),
-                        DataColumn(label: Text(context.tr('total_amount'))),
-                        DataColumn(label: Text(context.tr('remaining_amount'))),
-                        DataColumn(label: Text(context.tr('payment_status'))),
-                        DataColumn(label: Text(context.tr('actions'))),
-                      ],
-                      rows: _invoices.map((inv) {
-                        final isPaid = inv.paymentStatus == 'paid';
-                        return DataRow(cells: [
-                          DataCell(
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 14,
-                                  backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
-                                  child: ClipOval(
-                                    child: inv.profilePictureUrl != null
-                                        ? Image.network(
-                                            inv.profilePictureUrl!,
-                                            width: 28,
-                                            height: 28,
-                                            fit: BoxFit.cover,
-                                            errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 16, color: theme.primaryColor),
-                                          )
-                                        : Icon(Icons.person, size: 16, color: theme.primaryColor),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Text(inv.patientName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                          ),
-                          DataCell(Text(inv.doctorName)),
-                          DataCell(Text('\$${inv.consultationFee.toStringAsFixed(2)}')),
-                          DataCell(Text('\$${inv.additionalCost.toStringAsFixed(2)}')),
-                          DataCell(Text('\$${inv.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))),
-                          DataCell(Text('\$${inv.remainingAmount.toStringAsFixed(2)}', style: TextStyle(color: isPaid ? AppColors.success : AppColors.danger, fontWeight: FontWeight.bold))),
-                          DataCell(
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: (isPaid ? AppColors.success : AppColors.warning).withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Text(
-                                inv.paymentStatus.toUpperCase(),
-                                style: TextStyle(
-                                  color: isPaid ? AppColors.success : AppColors.warning,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ),
-                          ),
-                          DataCell(
-                            isPaid
-                                ? const Icon(Icons.check_circle, color: AppColors.success)
-                                : ElevatedButton.icon(
-                                    onPressed: () => _showCollectPaymentDialog(inv),
-                                    icon: const Icon(Icons.wallet, size: 16),
-                                    label: Text(context.tr('collect_payment')),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: theme.primaryColor,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                    ),
-                                  ),
-                          ),
-                        ]);
-                      }).toList(),
-                    ),
-                  ),
-              ],
-            ),
+            child: _activeTab == 'financial_history'
+                ? _buildFinancialHistoryTable(context, theme, isDark)
+                : _buildInvoicesTable(context, theme, isDark),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildInvoicesTable(BuildContext context, ThemeData theme, bool isDark) {
+    if (_isLoadingInvoices) {
+      return const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: AppColors.tealPrimary)));
+    }
+    if (_errorMsg != null) {
+      return Center(child: Padding(padding: const EdgeInsets.all(32), child: Text(_errorMsg!, style: const TextStyle(color: AppColors.danger))));
+    }
+    if (_invoices.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Center(
+          child: Text(
+            _activeTab == 'billing_queue'
+                ? 'No completed visits waiting for payment.'
+                : 'No invoices found.',
+            style: TextStyle(color: theme.hintColor, fontSize: 15),
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: [
+          DataColumn(label: Text(context.tr('patient_name'))),
+          DataColumn(label: Text(context.tr('doctor_name'))),
+          DataColumn(label: Text(context.tr('consultation_fee'))),
+          DataColumn(label: Text(context.tr('additional_cost'))),
+          DataColumn(label: Text(context.tr('total_amount'))),
+          DataColumn(label: Text(context.tr('remaining_amount'))),
+          DataColumn(label: Text(context.tr('payment_status'))),
+          DataColumn(label: Text(context.tr('actions'))),
+        ],
+        rows: _invoices.map((inv) {
+          final isPaid = inv.paymentStatus == 'paid';
+          return DataRow(cells: [
+            DataCell(
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
+                    child: ClipOval(
+                      child: inv.profilePictureUrl != null
+                          ? Image.network(
+                              inv.profilePictureUrl!,
+                              width: 28,
+                              height: 28,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 16, color: theme.primaryColor),
+                            )
+                          : Icon(Icons.person, size: 16, color: theme.primaryColor),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(inv.patientName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                ],
+              ),
+            ),
+            DataCell(Text(inv.doctorName)),
+            DataCell(Text('\$${inv.consultationFee.toStringAsFixed(2)}')),
+            DataCell(Text('\$${inv.additionalCost.toStringAsFixed(2)}')),
+            DataCell(Text('\$${inv.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold))),
+            DataCell(Text('\$${inv.remainingAmount.toStringAsFixed(2)}', style: TextStyle(color: isPaid ? AppColors.success : AppColors.danger, fontWeight: FontWeight.bold))),
+            DataCell(
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: (isPaid ? AppColors.success : AppColors.warning).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  inv.paymentStatus.toUpperCase(),
+                  style: TextStyle(
+                    color: isPaid ? AppColors.success : AppColors.warning,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ),
+            DataCell(
+              isPaid
+                  ? const Icon(Icons.check_circle, color: AppColors.success)
+                  : ElevatedButton.icon(
+                      onPressed: () => _showCollectPaymentDialog(inv),
+                      icon: const Icon(Icons.wallet, size: 16),
+                      label: Text(context.tr('collect_payment')),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.primaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      ),
+                    ),
+            ),
+          ]);
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildFinancialHistoryTable(BuildContext context, ThemeData theme, bool isDark) {
+    if (_isLoadingHistory) {
+      return const Center(child: Padding(padding: EdgeInsets.all(32), child: CircularProgressIndicator(color: AppColors.tealPrimary)));
+    }
+    if (_historyErrorMsg != null) {
+      return Center(child: Padding(padding: const EdgeInsets.all(32), child: Text(_historyErrorMsg!, style: const TextStyle(color: AppColors.danger))));
+    }
+    if (_historyTransactions.isEmpty) {
+      return Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Center(
+          child: Text(
+            context.tr('no_financial_transactions'),
+            style: TextStyle(color: theme.hintColor, fontSize: 15),
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: DataTable(
+        columns: [
+          DataColumn(label: Text(context.tr('created'))),
+          DataColumn(label: Text(context.tr('transaction_type'))),
+          DataColumn(label: Text(context.tr('patient_name'))),
+          DataColumn(label: Text(context.tr('doctor_staff'))),
+          DataColumn(label: Text(context.tr('amount'))),
+          DataColumn(label: Text(context.tr('reference'))),
+          DataColumn(label: Text(context.tr('description'))),
+          DataColumn(label: Text(context.tr('actions'))),
+        ],
+        rows: _historyTransactions.map((tx) {
+          final isDebit = tx.type.startsWith('refund') || tx.type == 'deduct';
+          final amountPrefix = isDebit ? '-' : '+';
+          final amountColor = isDebit ? AppColors.danger : AppColors.success;
+
+          return DataRow(
+            cells: [
+              // Date & Time
+              DataCell(
+                Text(
+                  tx.createdAt ?? 'N/A',
+                  style: const TextStyle(fontSize: 12.5),
+                ),
+              ),
+
+              // Transaction Type Badge
+              DataCell(_buildTypeBadge(tx)),
+
+              // Patient Info
+              DataCell(
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    CircleAvatar(
+                      radius: 13,
+                      backgroundColor: theme.primaryColor.withValues(alpha: 0.15),
+                      child: ClipOval(
+                        child: tx.patientProfilePictureUrl != null
+                            ? Image.network(
+                                tx.patientProfilePictureUrl!,
+                                width: 26,
+                                height: 26,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Icon(Icons.person, size: 14, color: theme.primaryColor),
+                              )
+                            : Icon(Icons.person, size: 14, color: theme.primaryColor),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      tx.patientName,
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Doctor / Staff
+              DataCell(
+                Text(
+                  tx.doctorName ?? '—',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: tx.doctorName != null ? null : theme.hintColor,
+                  ),
+                ),
+              ),
+
+              // Amount
+              DataCell(
+                Text(
+                  '$amountPrefix\$${tx.amount.toStringAsFixed(2)}',
+                  style: TextStyle(
+                    color: amountColor,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+
+              // Reference
+              DataCell(
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: theme.primaryColor.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    tx.appointmentId != null ? 'Visit #${tx.appointmentId}' : 'Receipt #${tx.id}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                      color: theme.primaryColor,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Description
+              DataCell(
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 220),
+                  child: Text(
+                    tx.description ?? '—',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12.5, color: theme.hintColor),
+                  ),
+                ),
+              ),
+
+              // Actions (View Details)
+              DataCell(
+                IconButton(
+                  icon: const Icon(Icons.info_outline_rounded, size: 20),
+                  tooltip: 'View Details',
+                  onPressed: () => _showTransactionDetailsDialog(tx),
+                ),
+              ),
+            ],
+          );
+        }).toList(),
+      ),
+    );
+  }
 }
+

@@ -620,7 +620,7 @@ class _AppointmentsManagementViewState extends State<AppointmentsManagementView>
   String _formatDateTime(String dateStr, String timeStr) {
     try {
       final parsedDate = DateTime.parse(dateStr);
-      final formattedDate = DateFormat('dd MMM yyyy').format(parsedDate);
+      final formattedDate = DateFormat('dd-MM-yyyy').format(parsedDate);
 
       final timeParts = timeStr.split(':');
       if (timeParts.length >= 2) {
@@ -628,9 +628,9 @@ class _AppointmentsManagementViewState extends State<AppointmentsManagementView>
         final minute = int.parse(timeParts[1]);
         final tempTime = DateTime(2026, 1, 1, hour, minute);
         final formattedTime = DateFormat('hh:mm a').format(tempTime);
-        return '$formattedDate  •  $formattedTime';
+        return '\u200E$formattedDate • $formattedTime\u200E';
       }
-      return '$formattedDate  •  $timeStr';
+      return '\u200E$formattedDate • $timeStr\u200E';
     } catch (_) {
       return '$dateStr $timeStr';
     }

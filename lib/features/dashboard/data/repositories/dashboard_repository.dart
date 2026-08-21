@@ -5,6 +5,7 @@ import '../../../../core/api/api_endpoints.dart';
 import '../models/dashboard_stats.dart';
 import '../models/reports_models.dart';
 import '../models/doctor_schedule_model.dart';
+import '../models/financial_transaction_model.dart';
 
 class DashboardRepository {
   final ApiClient _apiClient;
@@ -433,5 +434,30 @@ class DashboardRepository {
         if (staffOverride) 'staff_override': true,
       },
     );
+  }
+
+  /// Fetch financial history ledger for admin and receptionist.
+  Future<List<FinancialTransactionModel>> fetchFinancialHistory({
+    String? type,
+    String? search,
+    String? from,
+    String? to,
+    int page = 1,
+  }) async {
+    final queryParams = <String, dynamic>{
+      'page': page,
+      if (type != null && type.isNotEmpty && type != 'all') 'type': type,
+      if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      if (from != null && from.isNotEmpty) 'from': from,
+      if (to != null && to.isNotEmpty) 'to': to,
+    };
+
+    final response = await _apiClient.get(
+      '/api/reports/financial-history',
+      queryParameters: queryParams,
+    );
+
+    final dataList = response.data['data'] as List<dynamic>? ?? [];
+    return dataList.map((item) => FinancialTransactionModel.fromJson(item as Map<String, dynamic>)).toList();
   }
 }

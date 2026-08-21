@@ -362,7 +362,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         label: context.tr('overview'),
         icon: Icons.dashboard_outlined,
         selectedIcon: Icons.dashboard,
-        page: const DashboardOverviewView(),
+        page: DashboardOverviewView(
+          onNavigate: (targetIdx) {
+            setState(() => _selectedIndex = targetIdx);
+          },
+        ),
         roles: ['admin'],
       ),
       _NavItem(

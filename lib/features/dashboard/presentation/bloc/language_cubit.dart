@@ -7,7 +7,7 @@ class LanguageCubit extends Cubit<Locale> {
 
   LanguageCubit({required StorageService storageService})
       : _storageService = storageService,
-        super(const Locale('ar')) {
+        super(const Locale('en')) {
     _loadLanguage();
   }
 

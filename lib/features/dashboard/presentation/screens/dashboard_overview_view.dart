@@ -8,7 +8,9 @@ import '../widgets/stat_card.dart';
 import '../widgets/chart_card.dart';
 
 class DashboardOverviewView extends StatelessWidget {
-  const DashboardOverviewView({super.key});
+  final void Function(int targetSectionIndex)? onNavigate;
+
+  const DashboardOverviewView({super.key, this.onNavigate});
 
   @override
   Widget build(BuildContext context) {
@@ -130,6 +132,7 @@ class DashboardOverviewView extends StatelessWidget {
                           subtitle: '+${stats.users.newPatientsToday} ${context.tr('new_patients_today')}',
                           icon: Icons.people_alt_outlined,
                           accentColor: AppColors.tealPrimary,
+                          onTap: () => onNavigate?.call(3),
                         ),
                         StatCard(
                           title: context.tr('total_doctors'),
@@ -137,6 +140,7 @@ class DashboardOverviewView extends StatelessWidget {
                           subtitle: '${stats.users.totalReceptionists} ${context.tr('total_receptionists')}',
                           icon: Icons.medical_services_outlined,
                           accentColor: AppColors.info,
+                          onTap: () => onNavigate?.call(4),
                         ),
                         StatCard(
                           title: context.tr('today_appointments'),
@@ -144,6 +148,7 @@ class DashboardOverviewView extends StatelessWidget {
                           subtitle: '${stats.appointments.completed} ${context.tr('completed_appointments')}',
                           icon: Icons.calendar_today_outlined,
                           accentColor: AppColors.purple,
+                          onTap: () => onNavigate?.call(1),
                         ),
                         StatCard(
                           title: context.tr('total_revenue'),
@@ -151,6 +156,7 @@ class DashboardOverviewView extends StatelessWidget {
                           subtitle: '\$${stats.financial.pendingPayments.toStringAsFixed(2)} ${context.tr('pending_payments')}',
                           icon: Icons.payments_outlined,
                           accentColor: AppColors.success,
+                          onTap: () => onNavigate?.call(2),
                         ),
                       ],
                     );
